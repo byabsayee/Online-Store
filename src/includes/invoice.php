@@ -1,6 +1,6 @@
 <?php
 /**
- * Generates an order invoice as a PDF using mPDF. Nothing is cached to
+ * Generates an order invoice as a PDF using Dompdf (LGPL-2.1, AGPL-compatible). Nothing is cached to
  * disk — the PDF is rendered fresh from the database on every request, so
  * it always reflects the order's current status.
  *
@@ -9,12 +9,12 @@
  */
 require_once __DIR__ . '/functions.php';
 require_once __DIR__ . '/order_mail.php';
-require_once __DIR__ . '/../vendor/autoload.php';
+if (is_file(__DIR__ . '/../vendor/autoload.php')) require_once __DIR__ . '/../vendor/autoload.php';
 
-use Mpdf\Mpdf;
-use Mpdf\Output\Destination;
+use Dompdf\Dompdf;
+use Dompdf\Options;
 
-/** Amount for the PDF. The currency sign is set in regular weight — the Bengali Taka glyph has no bold variant in the PDF fonts. */
+/** Amount for the PDF. The currency sign is set in regular weight — the Taka glyph has no bold variant in DejaVu. */
 function invoice_money(float $amount): string {
     return '<span class="cur">' . e(store_currency_symbol()) . '</span>' . e(number_format($amount, 2));
 }
@@ -86,6 +86,7 @@ function build_invoice_html(array $order, array $items): string {
     $logoHtml = '';
     $logoUrl = brand_logo();
     $logoFile = $logoUrl ? upload_local_path($logoUrl) : null;
+    $logoFile = $logoFile ? (realpath($logoFile) ?: null) : null; // Dompdf only reads files inside its chroot, so give it the resolved path
     if ($logoFile && is_readable($logoFile) && preg_match('/\.(png|jpe?g|gif|svg)$/i', $logoFile)) {
         $logoHtml = '<img src="' . e($logoFile) . '" style="height:42px;margin-bottom:6px;"><br>';
     }
@@ -99,8 +100,9 @@ function build_invoice_html(array $order, array $items): string {
         : '';
     $notes = !empty($order['notes']) ? '<div class="notes"><span class="muted">Order note:</span> ' . e($order['notes']) . '</div>' : '';
 
-    return '<html><head><style>
-        body { font-family: dejavusans, sans-serif; font-size: 11.5px; color: #20293b; }
+    return '<html><head><meta charset="UTF-8"><style>
+        @page { margin: 16mm 14mm; }
+        body { font-family: "DejaVu Sans", sans-serif; font-size: 11.5px; color: #20293b; }
         .cur { font-weight: normal; }
         .muted { color: #8791a6; } .small { font-size: 9px; }
         h1 { font-size: 22px; margin: 0; color: ' . e($dark) . '; }
@@ -147,12 +149,14 @@ function build_invoice_html(array $order, array $items): string {
         ' . $rowsHtml . '
     </table>
 
-    <table class="totals" style="width:260px;margin-left:auto;margin-top:8px;">
+    <table style="margin-top:8px;"><tr><td></td><td style="width:270px;">
+    <table class="totals">
         <tr><td>Subtotal</td><td style="text-align:right;">' . invoice_money((float) $order['subtotal']) . '</td></tr>
         ' . $discountRow . '
         <tr><td>' . e($shipLabel) . '</td><td style="text-align:right;">' . ($order['shipping_fee'] > 0 ? invoice_money((float) $order['shipping_fee']) : 'Free') . '</td></tr>
         <tr class="grand"><td><strong>Total</strong></td><td style="text-align:right;"><strong>' . invoice_money((float) $order['total']) . '</strong></td></tr>
     </table>
+    </td></tr></table>
     ' . $notes . '
 
     <div class="muted small" style="margin-top:34px;text-align:center;">Thank you for shopping with ' . e($store['name']) . '.' . (trim((string) get_setting('invoice_footer', '')) !== '' ? '<br>' . nl2br(e(trim((string) get_setting('invoice_footer', '')))) : '') . '</div>
@@ -176,12 +180,40 @@ function output_order_invoice(array $order, array $items, string $mode = 'I', ?s
         echo $pdf;
         return;
     }
-    $mpdf = new Mpdf([
-        'tempDir' => sys_get_temp_dir(), 'format' => 'A4', 'margin_top' => 16, 'margin_bottom' => 16,
-        // Pick a font that has the right glyphs (Bengali ৳, Arabic, …) automatically.
-        'autoScriptToLang' => true, 'autoLangToFont' => true,
-    ]);
-    $mpdf->SetTitle('Invoice ' . $order['order_number']);
-    $mpdf->WriteHTML(build_invoice_html($order, $items));
-    $mpdf->Output('invoice-' . $order['order_number'] . '.pdf', $mode === 'D' ? Destination::DOWNLOAD : Destination::INLINE);
+    $html = build_invoice_html($order, $items);
+    $fname = 'invoice-' . preg_replace('/[^A-Za-z0-9._-]/', '_', (string) $order['order_number']) . '.pdf';
+    $pdf = null;
+    if (class_exists(Dompdf::class)) {
+        try {
+            $opt = new Options();
+            $opt->set('isRemoteEnabled', false);                 // never fetch anything over the network while rendering
+            $opt->set('isPhpEnabled', false);
+            $opt->set('chroot', [realpath(dirname(__DIR__)) ?: dirname(__DIR__)]); // the web root: logo and product photos live under it
+            $opt->set('tempDir', sys_get_temp_dir());
+            $opt->set('defaultFont', 'DejaVu Sans');             // has the Taka sign and most currency symbols
+            $dompdf = new Dompdf($opt);
+            $dompdf->loadHtml($html, 'UTF-8');
+            $dompdf->setPaper('A4', 'portrait');
+            $dompdf->render();
+            $dompdf->addInfo('Title', 'Invoice ' . $order['order_number']);
+            $pdf = $dompdf->output();
+        } catch (Throwable $e) {
+            error_log('[invoice] PDF render failed: ' . $e->getMessage());
+            $pdf = null;
+        }
+    }
+    if ($pdf !== null && $pdf !== '') {
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: ' . ($mode === 'D' ? 'attachment' : 'inline') . '; filename="' . $fname . '"');
+        header('Content-Length: ' . strlen($pdf));
+        header('Cache-Control: private, no-store');
+        echo $pdf;
+        return;
+    }
+    // No PDF library (or it failed): show the same invoice as a printable page — "Print → Save as PDF" in any browser.
+    header('Content-Type: text/html; charset=UTF-8');
+    header('Cache-Control: private, no-store');
+    $bar = '<style>@media print{.noprint{display:none!important}} body{max-width:820px;margin:18px auto;padding:0 14px}</style>';
+    $btn = '<p class="noprint" style="text-align:right"><button onclick="window.print()" style="padding:8px 16px;font:600 14px sans-serif;cursor:pointer">Print / Save as PDF</button></p>';
+    echo str_replace(['</head>', '<body>'], [$bar . '</head>', '<body>' . $btn], $html);
 }

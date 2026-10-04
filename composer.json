@@ -1,12 +1,12 @@
 {
     "name": "byabsayee/online-store",
-    "description": "Online Store dependencies (PDF invoices, transactional email).",
+    "description": "Online Store dependencies (PDF invoices via Dompdf, transactional email via PHPMailer).",
     "type": "project",
     "license": "AGPL-3.0-or-later",
     "require": {
         "php": ">=8.1",
         "phpmailer/phpmailer": "^6.9",
-        "mpdf/mpdf": "^8.2"
+        "dompdf/dompdf": "^3.0"
     },
     "config": {
         "optimize-autoloader": true,

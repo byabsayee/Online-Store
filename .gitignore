@@ -11,7 +11,7 @@ uploads/branding/*
 .DS_Store
 *.swp
 
-# Composer dependencies (PHPMailer, mPDF) — baked into the image by the
+# Composer dependencies (PHPMailer, Dompdf) — baked into the image by the
 # Dockerfile during CI; vendor-install.sh populates this locally for dev.
 /vendor/
 uploads/fonts/*

@@ -95,7 +95,7 @@ require __DIR__ . '/includes/header.php';
         <div class="field"><label for="credit_url">Credit link</label><input id="credit_url" name="credit_url" value="<?= e(get_setting('credit_url', CREDIT_URL_DEFAULT)) ?>" placeholder="https://…"></div>
       </div>
       <div class="checkbox-row" style="margin-bottom:10px;"><input type="checkbox" id="source_link_enabled" name="source_link_enabled" value="1" <?= get_setting('source_link_enabled', '1') === '1' ? 'checked' : '' ?>><label for="source_link_enabled" style="margin:0;font-weight:400;">Show a “Source code” link in the footer</label></div>
-      <div class="field"><label for="source_url">Source-code address</label><input id="source_url" name="source_url" value="<?= e(get_setting('source_url', SOURCE_CODE_URL_DEFAULT)) ?>" placeholder="https://github.com/…"></div>
+      <div class="field"><label for="source_url">Source-code address</label><input id="source_url" name="source_url" value="<?= e(get_setting('source_url', (string) env_val('SOURCE_CODE_URL', SOURCE_CODE_URL_DEFAULT))) ?>" placeholder="https://github.com/…"></div>
       <p class="help">This software is open source (AGPL-3.0). If you run a modified copy for the public, the licence asks you to offer visitors its source code — keep this link pointing at your copy of the code. Anyone may switch the credit line off.</p>
       <button class="btn btn-primary">Save</button>
     </form>

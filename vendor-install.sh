@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Populates ./vendor on the host with PHPMailer + mPDF, for local dev only.
+# Populates ./vendor on the host with PHPMailer + Dompdf, for local dev only.
 # Production/CI never needs this — the Dockerfile runs composer install
 # itself and bakes vendor/ into the published image. This script exists
 # purely so docker-compose.override.yml's live-reload bind mount (which

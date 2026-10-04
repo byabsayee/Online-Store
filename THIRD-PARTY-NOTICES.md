@@ -5,19 +5,18 @@ Online Store is released under the **GNU AGPL-3.0**. It uses the following compo
 
 | Component | Use | Licence | Compatible with AGPL-3.0? |
 |---|---|---|---|
-| [mPDF](https://github.com/mpdf/mpdf) (and its dependencies: setasign/fpdi, psr/log, myclabs/deep-copy, paragonie/random_compat, …) | PDF invoices | GPL-2.0-only | **Needs checking — see below** |
-| [PHPMailer](https://github.com/PHPMailer/PHPMailer) | Outgoing email | LGPL-2.1-or-later | Yes (LGPL-2.1+ may be combined with AGPL-3.0 under LGPL §3 / GPLv3 compatibility) |
+| [Dompdf](https://github.com/dompdf/dompdf) (and its dependencies: dompdf/php-font-lib, dompdf/php-svg-lib, masterminds/html5, sabberworm/php-css-parser) | PDF invoices | LGPL-2.1 (php-font-lib / php-svg-lib: LGPL-3.0; html5: MIT; css-parser: MIT) | Yes — see below |
+| [PHPMailer](https://github.com/PHPMailer/PHPMailer) | Outgoing email | LGPL-2.1-or-later | Yes (an LGPL library may be used by a program under another licence, LGPL §6; the AGPL permits modification and reverse engineering for debugging, as §6 requires) |
+| DejaVu Sans (bundled inside Dompdf) | Invoice PDF text | Bitstream Vera licence (free to use, embed and redistribute) | Yes |
 | MariaDB, nginx, PHP, phpMyAdmin | Run as separate containers/processes | GPL-2.0 / BSD-2 / PHP-3.01 / GPL-2.0 | Separate programs, not linked into this code |
 
-## mPDF — action needed before publishing
+## PDF invoices (Dompdf)
 
-mPDF is distributed under **GPL-2.0-only**. GPL-2.0-only code **cannot** be combined into one work with
-AGPL-3.0 code (the licences are not compatible in that direction). mPDF is loaded as a Composer library, so the
-combination is a real licensing question, not just a formality. Before you publish the template widely, choose one:
-
-1. Replace mPDF with a library under a compatible licence (for example Dompdf, LGPL-2.1, or TCPDF, LGPL-3.0), or
-2. Make PDF invoices an optional, separately installed add-on that is not part of the distributed AGPL work, or
-3. Ask a lawyer who knows open-source licensing to confirm your use.
+Earlier drafts used mPDF, which is GPL-2.0-only and cannot be combined with AGPL-3.0 code. It has been replaced by
+Dompdf. Dompdf and PHPMailer are LGPL libraries that this program only *uses* (they are installed unmodified by
+Composer into `vendor/` and can be replaced by the person running the store), which LGPL §6 allows under any licence
+that lets the user modify the combined work and debug it — the AGPL does. If the library is ever missing or fails,
+the invoice page falls back to a printable HTML page, so the store keeps working without it.
 
 This file is a technical note, not legal advice.
 

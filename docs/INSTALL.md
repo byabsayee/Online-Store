@@ -54,3 +54,13 @@ tax numbers, footer links, page wording and manual payment methods (never passwo
 ## 7. Link to Byabsayee accounting (optional)
 
 Admin → Store settings → Accounting link. Protocol details: [INTEGRATION.md](INTEGRATION.md).
+
+## 4. First start, defaults and what is created for you
+
+- The database tables are created automatically on the first page load — no phpMyAdmin import.
+- Every setting has a default, so a stack with no variables starts: database `admin` / `admin`, panel login
+  `admin` / `admin` (set `ADMIN_USER` / `ADMIN_PASS` to change what is created; you must still pick a new password at
+  first sign-in). **Change `DB_PASS` and `DB_ROOT_PASS` before the store is reachable from the internet.**
+- `SOURCE_CODE_URL` (or Admin → Footer & credits) sets the "Source code" link that the AGPL asks you to offer visitors.
+- PDF invoices use Dompdf. If it is missing, the invoice opens as a printable page ("Print → Save as PDF").
+- The dashboard shows a *Getting started* card until the main steps are done.

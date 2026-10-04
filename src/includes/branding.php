@@ -607,6 +607,12 @@ function render_head_meta(): string {
         $ogTitle = $s['name'];
         $desc = $s['description'];
     }
+    // Owner-written title / description for an editable page (Admin → Pages).
+    $pm = $GLOBALS['page_meta'] ?? [];
+    if (!$isProduct && !$isHome) {
+        if (!empty($pm['title'])) { $title = $pm['title']; $ogTitle = $pm['title']; }
+        if (!empty($pm['description'])) $desc = $pm['description'];
+    }
     $desc = meta_trim($desc, 300);
     $url = canonical_url();
 

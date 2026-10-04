@@ -1,7 +1,7 @@
 # Local development only — Compose merges this file automatically.
 # It mounts your working copy over the code in the image so edits show up on refresh.
 # On a production server, delete this file (or run `docker compose -f docker-compose.yml up -d`).
-# Run ./vendor-install.sh once first to create ./vendor (PHPMailer, mPDF).
+# Run ./vendor-install.sh once first to create ./vendor (PHPMailer, Dompdf).
 
 services:
   web:

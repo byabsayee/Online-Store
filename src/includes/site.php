@@ -30,6 +30,35 @@ function order_prefix(): string {
     return strlen($p) >= 2 ? substr($p, 0, 6) : 'ORD';
 }
 
+/* ============================================================ getting-started checklist */
+
+/** Steps for the dashboard card: [ [done(bool), label, link], … ]. Cheap checks only. */
+function setup_checklist(): array {
+    $smtp = smtp_settings();
+    $pmOn = (int) db()->query("SELECT COUNT(*) FROM payment_methods WHERE is_active = 1 AND kind <> 'cod'")->fetchColumn();
+    $prod = (int) db()->query('SELECT COUNT(*) FROM products WHERE is_active = 1')->fetchColumn();
+    return [
+        [!admin_uses_default_password(), 'Choose your own admin password', '/admin/account.php'],
+        [brand_logo() !== null, 'Upload your logo', '/admin/branding.php'],
+        [$prod > 0, 'Add your first product', '/admin/product_form.php'],
+        [$pmOn > 0, 'Add a payment method besides cash on delivery', '/admin/payment_methods.php'],
+        [trim($smtp['host']) !== '', 'Set up outgoing email so customers get order emails', '/admin/settings.php'],
+        [order_notify_recipients() !== [], 'Get an email whenever a new order arrives', '/admin/notifications.php'],
+        [source_link() !== null, 'Set the source-code address shown in the footer (AGPL requirement)', '/admin/footer_links.php'],
+    ];
+}
+
+/** True while the signed-in admin still has a shipped default password. */
+function admin_uses_default_password(): bool {
+    $me = function_exists('current_admin') ? current_admin() : null;
+    if (!$me) return false;
+    $st = db()->prepare('SELECT password_hash FROM admins WHERE id = ?');
+    $st->execute([$me['id']]);
+    $hash = (string) $st->fetchColumn();
+    foreach (default_admin_passwords() as $p) { if (password_verify($p, $hash)) return true; }
+    return false;
+}
+
 /* ============================================================ footer + credits */
 
 /** The footer's link columns, in order: [ 'Support' => [ ['label'=>..,'url'=>..,'new_tab'=>bool], … ], … ] */
@@ -67,7 +96,7 @@ function site_credit(): ?array {
 /** AGPL §13: a visible link to the source code of the running version. */
 function source_link(): ?string {
     if (get_setting('source_link_enabled', '1') !== '1') return null;
-    $u = trim((string) get_setting('source_url', SOURCE_CODE_URL_DEFAULT));
+    $u = trim((string) get_setting('source_url', (string) env_val('SOURCE_CODE_URL', SOURCE_CODE_URL_DEFAULT)));
     return preg_match('~^https?://~i', $u) ? $u : null;
 }
 
@@ -341,6 +370,14 @@ function site_page_title(string $slug): string {
     return ($r && trim($r['title']) !== '') ? $r['title'] : site_page_defs()[$slug]['title'];
 }
 
+/** Optional search-engine overrides for a page: ['title' => full <title>, 'description' => meta description]. */
+function site_page_seo(string $slug): array {
+    return [
+        'title' => trim((string) get_setting('page_seo_title_' . $slug, '')),
+        'description' => trim((string) get_setting('page_seo_desc_' . $slug, '')),
+    ];
+}
+
 function site_page_starter(string $slug): string {
     static $all = null;
     if ($all === null) $all = require __DIR__ . '/pages_default.php';
@@ -356,6 +393,8 @@ function render_site_page(string $slug): void {
         exit;
     }
     $pageTitle = site_page_title($slug);
+    $GLOBALS['pageTitle'] = $pageTitle; // header.php runs inside this function; render_head_meta() reads the global
+    $GLOBALS['page_meta'] = site_page_seo($slug);
     $eyebrow = $defs[$slug]['eyebrow'];
     $body = site_page_html($slug);
     require __DIR__ . '/header.php';
@@ -409,7 +448,9 @@ function sanitize_page_html(string $html): string {
 
 /** Setting keys that belong in a preset: appearance, text and options — never passwords, keys or accounting-link data. */
 function preset_setting_keys(): array {
-    return ['store_name', 'store_tagline', 'site_description', 'store_phone', 'store_phone2', 'store_email', 'store_address',
+    $seo = [];
+    foreach (array_keys(site_page_defs()) as $sl) { $seo[] = 'page_seo_title_' . $sl; $seo[] = 'page_seo_desc_' . $sl; }
+    return array_merge($seo, ['store_name', 'store_tagline', 'site_description', 'store_phone', 'store_phone2', 'store_email', 'store_address',
         'social_facebook', 'social_messenger', 'social_instagram', 'social_youtube', 'social_signal', 'social_whatsapp', 'social_tiktok',
         'theme_primary', 'theme_secondary', 'theme_dark', 'seasonal_enabled', 'seasonal_effect', 'topbar_enabled', 'topbar_text', 'topbar_link',
         'currency_symbol', 'currency_code', 'currency_pos', 'currency_decimals', 'timezone', 'order_prefix',
@@ -419,7 +460,7 @@ function preset_setting_keys(): array {
         'notify_enabled', 'notify_email', 'font_title_src', 'font_title_name', 'font_primary_src', 'font_primary_name', 'font_secondary_src', 'font_secondary_name',
         'home_eyebrow', 'home_headline', 'home_lead', 'home_cta', 'home_card_title', 'home_stamp', 'home_points', 'home_why_tag', 'home_why_title',
         'home_c1_title', 'home_c1_text', 'home_c2_title', 'home_c2_text', 'home_c3_title', 'home_c3_text',
-        'ads_enabled', 'ads_client', 'ads_txt', 'delivery_days_min', 'delivery_days_max', 'invoice_header', 'invoice_footer', 'invoice_tax_number'];
+        'ads_enabled', 'ads_client', 'ads_txt', 'delivery_days_min', 'delivery_days_max', 'invoice_header', 'invoice_footer', 'invoice_tax_number']);
 }
 
 /* ============================================================ home page text */

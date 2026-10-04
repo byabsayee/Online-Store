@@ -1,15 +1,15 @@
 FROM composer:2 AS vendor
 WORKDIR /app
 COPY composer.json ./
-# No committed composer.lock (kept out of git so PHPMailer/mPDF patch releases
+# No committed composer.lock (kept out of git so PHPMailer/Dompdf patch releases
 # are picked up automatically) — resolves fresh on every image build.
-RUN composer install --no-dev --no-interaction --no-progress --optimize-autoloader --ignore-platform-req=ext-gd
+RUN composer install --no-dev --no-interaction --no-progress --optimize-autoloader --ignore-platform-req=ext-gd --ignore-platform-req=ext-dom
 
 FROM php:8.3-fpm-bookworm
 
 # --- System deps: nginx (baked in) + supervisor (runs both processes) + PHP build deps ---
-# mbstring is required by mPDF (invoice PDFs); gd lets mPDF embed product
-# photos on invoices.
+# mbstring and dom are built into this PHP image and are required by Dompdf (invoice PDFs);
+# gd lets Dompdf embed PNG/JPEG logos on invoices.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         nginx supervisor libzip-dev unzip pkg-config libpng-dev libjpeg62-turbo-dev libfreetype6-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
@@ -52,5 +52,9 @@ RUN mkdir -p /var/www/html/uploads/products /var/www/html/uploads/branding \
     && chown -R www-data:www-data /run/php
 
 EXPOSE 80
+
+# Lets Portainer / `docker ps` show whether the web server is really answering.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+    CMD php -r 'exit(@fsockopen("127.0.0.1", 80, $e, $m, 3) ? 0 : 1);'
 
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

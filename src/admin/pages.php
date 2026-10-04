@@ -18,6 +18,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // An empty editor means "use the built-in starter text".
         db()->prepare('INSERT INTO site_pages (slug, title, body_html, is_enabled) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE title = VALUES(title), body_html = VALUES(body_html), is_enabled = VALUES(is_enabled)')
             ->execute([$slug, $title, $body !== '' ? $body : null, !empty($_POST['is_enabled']) ? 1 : 0]);
+        set_setting('page_seo_title_' . $slug, mb_substr(trim((string) ($_POST['seo_title'] ?? '')), 0, 70));
+        set_setting('page_seo_desc_' . $slug, mb_substr(trim((string) ($_POST['seo_desc'] ?? '')), 0, 160));
         admin_log('page.update', 'Edited the page "' . $title . '"', 'page', null);
         flash_set('success', 'Page saved.');
         redirect('/admin/pages.php');
@@ -86,6 +88,12 @@ if ($editSlug === 'home'):
     <textarea name="body_html" id="body_html" hidden></textarea>
     <p class="help">Placeholders fill in by themselves and update when your store details change: <code>{store_name}</code> <code>{store_email}</code> <code>{store_phone}</code> <code>{store_address}</code> <code>{updated}</code> <code>{currency}</code> <code>{delivery_days}</code> <code>{delivery_zones}</code> <code>{free_kg}</code> <code>{extra_per_kg}</code>. The starter wording is a generic sample, not legal advice — please review it for your country and business.</p>
   </div>
+  <details style="margin-bottom:14px;"><summary style="cursor:pointer;font-weight:600;">Search engines &amp; link previews <span class="muted" style="font-weight:400;">(optional)</span></summary>
+    <?php $seoP = site_page_seo($editSlug); ?>
+    <div class="field" style="margin-top:10px;"><label for="seot">Browser / Google title</label><input id="seot" name="seo_title" maxlength="70" value="<?= e($seoP['title']) ?>" placeholder="<?= e(site_page_title($editSlug) . ' — ' . store_name()) ?>"></div>
+    <div class="field"><label for="seod">Short description</label><textarea id="seod" name="seo_desc" rows="2" maxlength="160" placeholder="One or two sentences shown under the title in search results."><?= e($seoP['description']) ?></textarea>
+      <p class="help">Leave both empty to use the automatic ones.</p></div>
+  </details>
   <div class="checkbox-row" style="margin-bottom:14px;"><input type="checkbox" id="pen" name="is_enabled" value="1" <?= site_page_enabled($editSlug) ? 'checked' : '' ?>><label for="pen" style="margin:0;font-weight:400;">This page is on (visible to visitors)</label></div>
   <button class="btn btn-primary">Save page</button> <a class="btn btn-outline" href="/admin/pages.php">Back</a>
 </form>

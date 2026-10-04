@@ -30,6 +30,8 @@ services:
       APP_DEBUG: ${APP_DEBUG:-0}
       # Optional first-boot defaults — everything below can be changed later in the admin panel.
       SITE_NAME: ${SITE_NAME:-Online Store}
+      # AGPL-3.0 §13: where visitors can get this program's source code (shown as a footer link). Editable in Admin → Footer.
+      SOURCE_CODE_URL: ${SOURCE_CODE_URL:-}
       CURRENCY_SYMBOL: ${CURRENCY_SYMBOL:-৳}
       CURRENCY_CODE: ${CURRENCY_CODE:-BDT}
       CONTACT_EMAIL: ${CONTACT_EMAIL:-}

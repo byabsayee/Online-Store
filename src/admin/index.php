@@ -22,16 +22,23 @@ $lowStock = db()->query(
 )->fetchAll();
 
 // The seeded first-run password is public knowledge (it's in the repo) — nag until it's changed.
-$__pw = db()->prepare('SELECT password_hash FROM admins WHERE id = ?');
-$__pw->execute([current_admin()['id']]);
-$__hash = (string) $__pw->fetchColumn();
-$usingDefaultPassword = false;
-foreach (default_admin_passwords() as $__dp) { if (password_verify($__dp, $__hash)) { $usingDefaultPassword = true; break; } }
+$usingDefaultPassword = admin_uses_default_password();
+$__checklist = admin_is_owner() ? setup_checklist() : [];
+$__todo = count(array_filter($__checklist, fn ($c) => !$c[0]));
 $recentOrders = db()->query('SELECT * FROM orders ORDER BY created_at DESC LIMIT 8')->fetchAll();
 ?>
 
 <?php if ($usingDefaultPassword): ?>
   <div class="alert alert-warn"><strong>Change your admin password.</strong> You're still using the default one that ships with the store. <a href="/admin/account.php" style="text-decoration:underline;font-weight:600;">Change it now →</a></div>
+<?php endif; ?>
+
+<?php if ($__todo > 0): ?>
+<div class="panel"><div class="panel-head"><h2>Getting started</h2><span class="muted small"><?= count($__checklist) - $__todo ?> of <?= count($__checklist) ?> done</span></div>
+  <div class="panel-body"><ul class="checklist" style="list-style:none;padding-left:0;margin:0;">
+    <?php foreach ($__checklist as [$ok, $label, $href]): ?>
+      <li><?= $ok ? '<span style="color:var(--sage,#5f7d5b)">✓</span> <span class="muted" style="text-decoration:line-through;">' . e($label) . '</span>' : '<span class="muted">○</span> <a class="link" href="' . e($href) . '">' . e($label) . '</a>' ?></li>
+    <?php endforeach; ?>
+  </ul></div></div>
 <?php endif; ?>
 
 <div class="stat-grid">
