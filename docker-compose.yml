@@ -1,0 +1,120 @@
+# Kafeel — production/default stack definition.
+#
+# `web` references the image published by .github/workflows/docker-
+# publish.yml on GHCR (ghcr.io/techzeeland/kafeel) — nothing to build, so
+# this deploys straight from Portainer's Web editor (paste and go) or plain
+# `docker compose up`, with no local build step and no "pull access denied"
+# surprises, since the image is a real public package once CI has run once.
+#
+# The two bind-mount paths below (uploads, schema.sql) are ABSOLUTE host
+# paths tied to this server's actual folder, /Sites/Kafeel — that's on
+# purpose: it's what makes Portainer's Web editor (paste YAML, no git clone)
+# put the uploads folder exactly where you asked, at /Sites/Kafeel/uploads,
+# rather than buried inside Portainer's own internal storage. If you (or
+# anyone forking this repo) run it from a different path, or deploy via
+# Portainer's "Repository" method (which clones the whole repo itself),
+# switch these two lines to relative paths (./uploads, ./sql/schema.sql)
+# instead — either works, just pick one that matches how you're deploying.
+#
+# Developing locally? See docker-compose.override.yml — `docker compose`
+# picks it up automatically from the same folder and adds a live-reload
+# bind mount on top of this file, no edits needed here.
+
+services:
+  web:
+    image: ghcr.io/techzeeland/kafeel:latest
+    container_name: kafeel_web
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-1023}:80"
+    environment:
+      DB_HOST: db
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
+      SITE_NAME: ${SITE_NAME}
+      SITE_URL: ${SITE_URL}
+      CURRENCY_SYMBOL: ${CURRENCY_SYMBOL}
+      CURRENCY_CODE: ${CURRENCY_CODE:-BDT}
+      SHIPPING_INSIDE_DHAKA_FEE: ${SHIPPING_INSIDE_DHAKA_FEE}
+      SHIPPING_SUBURBS_FEE: ${SHIPPING_SUBURBS_FEE}
+      SHIPPING_OUTSIDE_DHAKA_FEE: ${SHIPPING_OUTSIDE_DHAKA_FEE}
+      SHIPPING_FREE_WEIGHT_KG: ${SHIPPING_FREE_WEIGHT_KG}
+      SHIPPING_EXTRA_PER_KG: ${SHIPPING_EXTRA_PER_KG}
+      DELIVERY_DAYS_MIN: ${DELIVERY_DAYS_MIN}
+      DELIVERY_DAYS_MAX: ${DELIVERY_DAYS_MAX}
+      CONTACT_EMAIL: ${CONTACT_EMAIL}
+      CONTACT_PHONE: ${CONTACT_PHONE:-}
+      CONTACT_PHONE_2: ${CONTACT_PHONE_2:-}
+      STORE_ADDRESS: ${STORE_ADDRESS:-}
+      SOCIAL_FACEBOOK: ${SOCIAL_FACEBOOK}
+      SOCIAL_FACEBOOK_MESSENGER: ${SOCIAL_FACEBOOK_MESSENGER}
+      SOCIAL_INSTAGRAM: ${SOCIAL_INSTAGRAM}
+      SOCIAL_YOUTUBE: ${SOCIAL_YOUTUBE}
+      SOCIAL_WHATSAPP: ${SOCIAL_WHATSAPP:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_SECURE: ${SMTP_SECURE:-}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      TZ: ${TZ}
+      APP_DEBUG: ${APP_DEBUG}
+    volumes:
+      # Uploaded product photos land in a real, browsable host folder
+      # instead of an opaque named volume.
+      - /Sites/Kafeel/uploads:/var/www/html/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - kafeel_net
+
+  db:
+    image: mariadb:11.4
+    container_name: kafeel_db
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${DB_NAME}
+      MARIADB_USER: ${DB_USER}
+      MARIADB_PASSWORD: ${DB_PASS}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASS}
+    volumes:
+      - db_data:/var/lib/mysql
+      - /Sites/Kafeel/sql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks:
+      - kafeel_net
+
+  # phpMyAdmin: DB UI for ease of management, its own port, same stack/network.
+  phpmyadmin:
+    image: phpmyadmin:5
+    container_name: kafeel_phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: db
+      PMA_USER: ${DB_USER}
+      PMA_PASSWORD: ${DB_PASS}
+    ports:
+      - "${PMA_PORT:-1024}:80"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - kafeel_net
+
+networks:
+  kafeel_net:
+    driver: bridge
+
+volumes:
+  db_data:
+    name: kafeel_db_data

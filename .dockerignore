@@ -1,0 +1,19 @@
+# Never send secrets or local-only files into the build context/image
+.env
+.git
+.github
+
+# Real uploaded photos and the local DB dump/backups don't belong in the image
+uploads/products/*
+!uploads/products/.gitkeep
+*.sql.gz
+backup.sql
+
+# Docs and editor/OS cruft — irrelevant to the running app
+README.md
+CONTRIBUTING.md
+CODE_OF_CONDUCT.md
+LICENSE
+.DS_Store
+*.swp
+build.sh

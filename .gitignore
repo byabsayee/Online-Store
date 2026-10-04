@@ -1,0 +1,16 @@
+# Local environment config (copy .env.example -> .env and fill in secrets)
+.env
+
+# User-uploaded product photos — real files live only on the server
+uploads/products/*
+!uploads/products/.gitkeep
+uploads/branding/*
+!uploads/branding/.gitkeep
+
+# OS/editor cruft
+.DS_Store
+*.swp
+
+# Composer dependencies (PHPMailer, mPDF) — baked into the image by the
+# Dockerfile during CI; vendor-install.sh populates this locally for dev.
+/vendor/

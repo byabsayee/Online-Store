@@ -1,0 +1,26 @@
+# Local development override — automatically merged on top of
+# docker-compose.yml whenever you run `docker compose up` (or
+# `docker compose down`, etc.) from a shell in this folder. No extra flags
+# needed; this is Compose's built-in convention, not a Kafeel-specific one.
+#
+# This is what gives you "edit a file, refresh the browser": it bind-mounts
+# your live source tree over whatever code shipped in the GHCR image, so
+# nginx/PHP-FPM always serve what's currently on disk. Combined with
+# docker/php/opcache-dev.ini (already baked into the image, checks each
+# file's mtime every request), edits take effect immediately — no rebuild,
+# no restart, no `docker compose up --build`.
+#
+# Deploying via Portainer's Web editor instead (production-style, no live
+# editing)? Don't paste this file there — paste only docker-compose.yml.
+# This override is purely a convenience for `docker compose` on this host.
+
+services:
+  web:
+    volumes:
+      - /Sites/Kafeel/src:/var/www/html
+      - /Sites/Kafeel/uploads:/var/www/html/uploads
+      # The line above shadows the image's baked-in /var/www/html/vendor
+      # (PHPMailer, mPDF) with the host's ./src, which has no vendor/ of its
+      # own — so mount it back on top. Run ./vendor-install.sh once (and
+      # again after changing composer.json) to populate /Sites/Kafeel/vendor.
+      - /Sites/Kafeel/vendor:/var/www/html/vendor

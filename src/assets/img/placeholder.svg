@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <rect width="400" height="400" fill="#f8f6ee"/>
+  <rect x="0.5" y="0.5" width="399" height="399" fill="none" stroke="#d9d4c3"/>
+  <g stroke="#c9c4b2" stroke-width="1.5" fill="none">
+    <line x1="40" y1="40" x2="360" y2="360"/>
+    <line x1="360" y1="40" x2="40" y2="360"/>
+    <rect x="120" y="120" width="160" height="160" rx="6"/>
+  </g>
+  <text x="200" y="345" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="13" fill="#8791a6">no image yet</text>
+</svg>
