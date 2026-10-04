@@ -680,7 +680,7 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- Seed data
 -- ============================================================
 
--- Starter admin login -> username: admin  password: ChangeMe123!  The setup wizard makes you choose a new password on first sign-in.
+-- Starter admin (placeholder hash). On first boot the app replaces it with ADMIN_USER / ADMIN_PASS (default admin / admin) and forces a password change.
 INSERT INTO admins (username, name, password_hash, role, must_change_password) VALUES
 ('admin', 'admin', '$2b$10$t65uPHFANoBh6cQGF5pB9Ow1R6T2bR2JaMqJsWE1TNgjilZdgl5Wq', 'owner', 1);
 

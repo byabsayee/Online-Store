@@ -68,7 +68,7 @@ function staff_mask_id(?string $n): string {
 
 function staff_password_error(string $pw): ?string {
     if (strlen($pw) < 10) return 'The password must be at least 10 characters.';
-    if ($pw === 'ChangeMe123!') return 'Please choose a different password from the default one.';
+    if (in_array($pw, default_admin_passwords(), true)) return 'Please choose a different password from the default one.';
     return null;
 }
 

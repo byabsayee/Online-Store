@@ -21,7 +21,7 @@ if (!defined('DB_HOST')) {
     define('DB_HOST', env_val('DB_HOST', 'db'));
     define('DB_NAME', env_val('DB_NAME', 'store_db'));
     define('DB_USER', env_val('DB_USER', 'admin'));
-    define('DB_PASS', env_val('DB_PASS', 'ChangeMe123!'));
+    define('DB_PASS', env_val('DB_PASS', 'admin'));
 
     define('SITE_NAME', env_val('SITE_NAME', 'Online Store'));
     define('SITE_URL', rtrim(env_val('SITE_URL', ''), '/')); // e.g. https://shop.example.com, blank = relative

@@ -43,6 +43,8 @@ COPY --from=vendor /app/vendor/ /var/www/html/vendor/
 # SQL migrations live outside the web root; the app applies any that are new
 # on the first request after a deploy (src/includes/migrate.php).
 COPY sql/migrations/ /var/www/migrations/
+# Fresh-install schema: imported automatically on the first request when the database is empty.
+COPY sql/schema.sql /var/www/schema.sql
 
 # Uploaded product images must be writable by the web server
 RUN mkdir -p /var/www/html/uploads/products /var/www/html/uploads/branding \

@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/migrate.php';
 
 function db(): PDO {
     static $pdo = null;
@@ -36,7 +37,22 @@ function db(): PDO {
         // page whose first query touches a table added by a new migration would crash on the first
         // request after a deploy, before anything had a chance to create that table.
         if (function_exists('all_settings')) {
-            try { all_settings(); } catch (Throwable $e) { error_log('[db] could not preload settings: ' . $e->getMessage()); }
+            try {
+                all_settings();
+            } catch (Throwable $e) {
+                // Empty database (first boot, nothing imported by hand): create the tables, then load again.
+                if (schema_is_missing($e)) {
+                    try {
+                        require_once __DIR__ . '/migrate.php';
+                        if (bootstrap_schema($pdo)) { unset($GLOBALS['__settings_cache']); all_settings(); }
+                    } catch (Throwable $e2) {
+                        error_log('[db] first-run schema import failed: ' . $e2->getMessage());
+                        $GLOBALS['__migration_error'] = $e2->getMessage();
+                    }
+                } else {
+                    error_log('[db] could not preload settings: ' . $e->getMessage());
+                }
+            }
         }
     }
     return $pdo;

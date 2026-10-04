@@ -33,16 +33,16 @@ time zone and delivery zones.
 Requires Docker with the Compose plugin.
 
 ```bash
-cp .env.example .env        # set DB_PASS and DB_ROOT_PASS (and WEB_PORT / SITE_URL if you like)
+cp .env.example .env        # optional — every value has a default (admin / admin); change passwords before going public
 docker compose up -d --build
 ```
 
-Open `http://<server>:8080/admin` and sign in with **admin / ChangeMe123!**. You are asked to choose a new password
+Open `http://<server>:8080/admin` and sign in with **admin / admin**. You are asked to choose a new password
 immediately, then the setup wizard starts. Full guide, reverse-proxy and update instructions: [`docs/INSTALL.md`](docs/INSTALL.md).
 
 ## Starter admin
 
-Sign in with admin / ChangeMe123! the first time; you must choose a new password immediately.
+Sign in with admin / admin the first time; you must choose a new password immediately.
 
 ## Updating
 

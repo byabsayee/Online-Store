@@ -24,7 +24,9 @@ $lowStock = db()->query(
 // The seeded first-run password is public knowledge (it's in the repo) — nag until it's changed.
 $__pw = db()->prepare('SELECT password_hash FROM admins WHERE id = ?');
 $__pw->execute([current_admin()['id']]);
-$usingDefaultPassword = password_verify('ChangeMe123!', (string) $__pw->fetchColumn());
+$__hash = (string) $__pw->fetchColumn();
+$usingDefaultPassword = false;
+foreach (default_admin_passwords() as $__dp) { if (password_verify($__dp, $__hash)) { $usingDefaultPassword = true; break; } }
 $recentOrders = db()->query('SELECT * FROM orders ORDER BY created_at DESC LIMIT 8')->fetchAll();
 ?>
 

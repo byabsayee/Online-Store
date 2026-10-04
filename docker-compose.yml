@@ -1,7 +1,8 @@
 # Online Store — stack definition (web + database + phpMyAdmin).
 #
-# One command:   cp .env.example .env   (edit the passwords)   then   docker compose up -d --build
-# Open http://<server>:${WEB_PORT:-8080} and sign in at /admin — the setup wizard guides you from there.
+# One command:   docker compose up -d --build   — every variable has a default, so no .env is required.
+# Open http://<server>:${WEB_PORT:-8080}/admin and sign in with admin / admin (you must pick a new password).
+# The database tables are created automatically on first start. Set DB_PASS / DB_ROOT_PASS before going public.
 #
 # `web` is built from this folder. To use a prebuilt image instead (for example one published by your own
 # CI), set STORE_IMAGE in .env and run `docker compose pull && docker compose up -d`.
@@ -19,9 +20,12 @@ services:
     environment:
       DB_HOST: db
       DB_NAME: ${DB_NAME:-store_db}
-      DB_USER: ${DB_USER:-store}
-      DB_PASS: ${DB_PASS}
+      DB_USER: ${DB_USER:-admin}
+      DB_PASS: ${DB_PASS:-admin}
       SITE_URL: ${SITE_URL:-}
+      # First-run admin sign-in (you are made to choose a new password straight away). Only read on first boot.
+      ADMIN_USER: ${ADMIN_USER:-admin}
+      ADMIN_PASS: ${ADMIN_PASS:-admin}
       TZ: ${TZ:-Asia/Dhaka}
       APP_DEBUG: ${APP_DEBUG:-0}
       # Optional first-boot defaults — everything below can be changed later in the admin panel.
@@ -52,12 +56,11 @@ services:
     restart: unless-stopped
     environment:
       MARIADB_DATABASE: ${DB_NAME:-store_db}
-      MARIADB_USER: ${DB_USER:-store}
-      MARIADB_PASSWORD: ${DB_PASS}
-      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASS}
+      MARIADB_USER: ${DB_USER:-admin}
+      MARIADB_PASSWORD: ${DB_PASS:-admin}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASS:-admin}
     volumes:
       - db_data:/var/lib/mysql
-      - ./sql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 5s
@@ -71,8 +74,8 @@ services:
     restart: unless-stopped
     environment:
       PMA_HOST: db
-      PMA_USER: ${DB_USER:-store}
-      PMA_PASSWORD: ${DB_PASS}
+      PMA_USER: ${DB_USER:-admin}
+      PMA_PASSWORD: ${DB_PASS:-admin}
     ports:
       - "${PMA_PORT:-8081}:80"
     depends_on:

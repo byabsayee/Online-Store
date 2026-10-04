@@ -4,12 +4,12 @@
 
 ```bash
 git clone https://github.com/<your-account>/online-store.git && cd online-store
-cp .env.example .env            # edit DB_PASS, DB_ROOT_PASS, WEB_PORT, SITE_URL
+cp .env.example .env            # optional — all values have defaults; edit DB_PASS, DB_ROOT_PASS, ADMIN_PASS, WEB_PORT, SITE_URL
 docker compose up -d --build    # first build takes a few minutes
 ```
 
 1. Open `http://<server-ip>:8080/admin` (or your `WEB_PORT`).
-2. Sign in: **admin / ChangeMe123!** → choose a new password when asked.
+2. Sign in: **admin / admin** → choose a new password when asked.
 3. The **setup wizard** opens: store name & contact → region & currency → colours → delivery zones & payment methods → pages.
 4. Finish the checklist on the last screen (logo, outgoing email, order alerts, products).
 
@@ -18,8 +18,9 @@ docker compose up -d --build    # first build takes a few minutes
 
 ## 2. Install with Portainer
 
-*Stacks → Add stack → Repository*: point at your copy of this repository, compose path `docker-compose.yml`, and add
-the variables from `.env.example` under *Environment variables*. Delete `docker-compose.override.yml` from the
+*Stacks → Add stack → Repository*: point at your copy of this repository, compose path `docker-compose.yml`, and deploy.
+No variables are required (database and admin login default to admin / admin, tables are created on first start);
+add any from `.env.example` under *Environment variables* to override them. Delete `docker-compose.override.yml` from the
 repository (or choose the “Repository” method so only `docker-compose.yml` is used). If you publish an image with
 the included GitHub workflow, set `STORE_IMAGE=ghcr.io/<owner>/online-store:latest`.
 

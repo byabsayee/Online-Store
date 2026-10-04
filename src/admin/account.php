@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Your current password is incorrect.';
     } elseif (strlen($new) < 10) {
         $errors[] = 'Choose a new password of at least 10 characters.';
-    } elseif ($new === 'ChangeMe123!' || $new === $current) {
+    } elseif (in_array($new, default_admin_passwords(), true) || $new === $current) {
         $errors[] = 'The new password must be different from the old one.';
     } elseif ($new !== $confirm) {
         $errors[] = 'The two new passwords don\'t match.';
