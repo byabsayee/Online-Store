@@ -239,6 +239,10 @@ function erp_return_create(int $orderId, array $items, ?string $reason, float $r
 /* ------------------------------------------------------------- settings -- */
 
 function store_currency_symbol(): string { return (string) setting_or('currency_symbol', STORE_CURRENCY_SYMBOL); }
+/** 'before' (৳100.00) or 'after' (100.00 €). */
+function currency_position(): string { return get_setting('currency_pos', 'before') === 'after' ? 'after' : 'before'; }
+/** Display decimals only (0-2); stored amounts and the accounting link always use 2. */
+function currency_decimals(): int { $d = get_setting('currency_decimals', '2'); return in_array($d, ['0', '1', '2'], true) ? (int) $d : 2; }
 function store_currency_code(): string { return strtoupper((string) setting_or('currency_code', STORE_CURRENCY_CODE)); }
 
 /** Shipping numbers: admin-edited (Delivery & tax) values win over the .env defaults. k: inside|suburbs|outside|free_kg|extra_kg */

@@ -78,6 +78,7 @@ $qsBase = 'q=' . urlencode($q) . ($featuredOnly ? '&featured=1' : '') . '&sort='
   </div>
 
   <?php if ($products): ?>
+    <?= ad_slot('category_top') ?>
     <div class="product-grid">
       <?php foreach ($products as $p): include __DIR__ . '/includes/product_card.php'; endforeach; ?>
     </div>

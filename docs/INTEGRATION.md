@@ -1,6 +1,6 @@
-# Kafeel ⇄ Byabsayee integration — protocol v1 (as implemented by Kafeel)
+# Online Store ⇄ Byabsayee integration — protocol v1 (as implemented by the store)
 
-This is the contract the **Byabsayee** side must implement. Everything here is already built and tested on Kafeel's side (`src/includes/erp/*`, `src/api/erp/*`, `src/erp_worker.php`, `src/admin/erp.php`). Where the brief left a choice, the decision Kafeel made is stated as **[decision]** so Byabsayee can match it or push back.
+This is the contract the **Byabsayee** side must implement. Everything here is already built and tested on the store's side (`src/includes/erp/*`, `src/api/erp/*`, `src/erp_worker.php`, `src/admin/erp.php`). Where the brief left a choice, the decision the store made is stated as **[decision]** so Byabsayee can match it or push back.
 
 The module ships **disabled**. Until an owner pairs the store, no event is queued, no route answers, and the shop behaves exactly as before.
 
@@ -8,7 +8,7 @@ The module ships **disabled**. Until an owner pairs the store, no event is queue
 
 ## 1. Transport
 
-* Always HTTPS, port 443, dedicated public domain on both sides (no IPs, no `localhost`, no `.local/.internal`, no path prefix on the store's domain). Kafeel refuses to call a host that resolves to a private/loopback/link-local/CGNAT/metadata address and pins the connection to the vetted IP. No redirects are followed.
+* Always HTTPS, port 443, dedicated public domain on both sides (no IPs, no `localhost`, no `.local/.internal`, no path prefix on the store's domain). The store refuses to call a host that resolves to a private/loopback/link-local/CGNAT/metadata address and pins the connection to the vetted IP. No redirects are followed.
 * JSON, UTF-8. Money is **always a 2-decimal string** (`"1980.00"`), never a float. Timestamps are UTC ISO-8601 with `Z` (`2026-09-30T10:15:00.123Z`).
 * Ids are UUIDs. Entities that exist once per connection use **UUIDv5 over the connection id**: `uuid5(connection_id, "tax")` and `uuid5(connection_id, "delivery:inside_dhaka" | "delivery:suburbs" | "delivery:outside_dhaka")`. Same function on both sides (RFC 4122 §4.3, namespace = the connection UUID, name = the string).
 

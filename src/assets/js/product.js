@@ -1,7 +1,7 @@
 /**
  * Product page picker: separate Color and Size selectors that stay in sync
  * with the real variant rows, and drive price, stock, preview photo,
- * dimensions and weight. Data comes from window.KAFEEL_PRODUCT (product.php).
+ * dimensions and weight. Data comes from window.STORE_PRODUCT (product.php).
  */
 (function (root) {
   'use strict';
@@ -169,11 +169,11 @@
     return { init: init, select: select, state: state, variantFor: variantFor, available: available, resolvedSpecs: resolvedSpecs, imageForState: imageForState };
   }
 
-  root.KafeelProduct = { create: create };
-  if (typeof module !== 'undefined' && module.exports) module.exports = root.KafeelProduct;
+  root.StoreProduct = { create: create };
+  if (typeof module !== 'undefined' && module.exports) module.exports = root.StoreProduct;
 
-  if (root.KAFEEL_PRODUCT && root.document) {
-    var start = function () { root.KafeelProduct.instance = create(root.KAFEEL_PRODUCT); root.KafeelProduct.instance.init(); };
+  if (root.STORE_PRODUCT && root.document) {
+    var start = function () { root.StoreProduct.instance = create(root.STORE_PRODUCT); root.StoreProduct.instance.init(); };
     if (root.document.readyState === 'loading') root.document.addEventListener('DOMContentLoaded', start); else start();
   }
 })(typeof window !== 'undefined' ? window : globalThis);

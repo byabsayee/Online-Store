@@ -11,6 +11,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $num = fn ($k) => isset($_POST[$k]) && is_numeric($_POST[$k]) && (float) $_POST[$k] >= 0 ? round((float) $_POST[$k], 2) : null;
     $vals = ['ship_inside' => $num('inside'), 'ship_suburbs' => $num('suburbs'), 'ship_outside' => $num('outside'), 'ship_free_kg' => $num('free_kg'), 'ship_extra_kg' => $num('extra_kg')];
     foreach ($vals as $k => $v) if ($v === null) $errors[] = 'Enter a number (0 or more) for every delivery field.';
+    $zlabels = [];
+    foreach (['inside', 'suburbs', 'outside'] as $zk) { $zlabels[$zk] = mb_substr(trim($_POST['zlabel_' . $zk] ?? ''), 0, 40); if ($zlabels[$zk] === '') $errors[] = 'Give every delivery zone a name.'; }
     $errors = array_unique($errors);
     $rate = isset($_POST['tax_rate']) && is_numeric($_POST['tax_rate']) ? round((float) $_POST['tax_rate'], 3) : null;
     $taxOn = !empty($_POST['tax_enabled']);
@@ -21,6 +23,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             db()->beginTransaction();
             foreach ($vals as $k => $v) set_setting($k, (string) $v);
+            foreach ($zlabels as $zk => $zl) set_setting('zone_label_' . $zk, $zl);
+            set_setting('zone_off_suburbs', empty($_POST['zone_on_suburbs']) ? '1' : '0');
+            set_setting('zone_off_outside', empty($_POST['zone_on_outside']) ? '1' : '0');
             set_setting('tax_enabled', $taxOn ? '1' : '0');
             set_setting('tax_rate', (string) ($rate ?? 0));
             set_setting('tax_inclusive', ($_POST['tax_mode'] ?? '') === 'inclusive' ? '1' : '0');
@@ -44,11 +49,14 @@ require __DIR__ . '/includes/header.php';
 <section class="panel">
   <div class="panel-head"><h2>Delivery charges</h2></div>
   <div class="panel-body">
+    <?php foreach ([['inside', 'Zone 1 (always available)'], ['suburbs', 'Zone 2'], ['outside', 'Zone 3']] as [$zk, $zt]): ?>
     <div class="field-row">
-      <div class="field"><label for="inside">Inside Dhaka</label><div class="input-affix"><span class="affix"><?= e(store_currency_symbol()) ?></span><input type="number" step="0.01" min="0" id="inside" name="inside" value="<?= e((string) shipcfg('inside')) ?>"></div></div>
-      <div class="field"><label for="suburbs">Dhaka suburbs</label><div class="input-affix"><span class="affix"><?= e(store_currency_symbol()) ?></span><input type="number" step="0.01" min="0" id="suburbs" name="suburbs" value="<?= e((string) shipcfg('suburbs')) ?>"></div></div>
-      <div class="field"><label for="outside">Outside Dhaka</label><div class="input-affix"><span class="affix"><?= e(store_currency_symbol()) ?></span><input type="number" step="0.01" min="0" id="outside" name="outside" value="<?= e((string) shipcfg('outside')) ?>"></div></div>
+      <div class="field"><label for="zlabel_<?= $zk ?>"><?= e($zt) ?> — name shown to customers</label><input id="zlabel_<?= $zk ?>" name="zlabel_<?= $zk ?>" maxlength="40" value="<?= e($_POST['zlabel_' . $zk] ?? delivery_area_label(array_search($zk, DELIVERY_ZONE_KEYS, true))) ?>"></div>
+      <div class="field"><label for="<?= $zk ?>">Delivery fee</label><div class="input-affix"><span class="affix"><?= e(store_currency_symbol()) ?></span><input type="number" step="0.01" min="0" id="<?= $zk ?>" name="<?= $zk ?>" value="<?= e((string) shipcfg($zk)) ?>"></div></div>
+      <?php if ($zk !== 'inside'): ?><div class="field"><label>&nbsp;</label><label class="checkbox-row" style="margin:0;"><input type="checkbox" name="zone_on_<?= $zk ?>" value="1" <?= get_setting('zone_off_' . $zk, '0') !== '1' ? 'checked' : '' ?>> Offer this zone</label></div><?php endif; ?>
     </div>
+    <?php endforeach; ?>
+    <p class="help">Keep one zone for “deliver everywhere”, or use up to three (for example: Local, Regional, International). Customers only see the zones you offer.</p>
     <div class="field-row">
       <div class="field"><label for="free_kg">Weight covered by the base fee (kg)</label><input type="number" step="0.01" min="0" id="free_kg" name="free_kg" value="<?= e((string) shipcfg('free_kg')) ?>"></div>
       <div class="field"><label for="extra_kg">Extra per additional kg</label><div class="input-affix"><span class="affix"><?= e(store_currency_symbol()) ?></span><input type="number" step="0.01" min="0" id="extra_kg" name="extra_kg" value="<?= e((string) shipcfg('extra_kg')) ?>"></div></div>

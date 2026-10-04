@@ -30,7 +30,7 @@ $__activeCat = $_GET['slug'] ?? '';
 /* Apply the saved (or system) day/night choice before first paint — no flash. */
 (function () {
   try {
-    var t = localStorage.getItem('kafeel-theme');
+    var t = localStorage.getItem('store-theme');
     if (t !== 'light' && t !== 'dark') t = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     document.documentElement.setAttribute('data-theme', t);
     var m = document.querySelector('meta[name="theme-color"]');
@@ -43,6 +43,7 @@ $__activeCat = $_GET['slug'] ?? '';
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/css/style.css?v=<?= $__assetV('css/style.css') ?>">
+<?= font_head_html() ?>
 <style><?= theme_css() ?></style>
 </head>
 <body class="<?= e($__pageClass) ?>">
@@ -121,7 +122,7 @@ $__activeCat = $_GET['slug'] ?? '';
       <nav class="mnav-links" aria-label="Menu">
         <a href="/" class="<?= $__isHome ? 'active' : '' ?>"><?= ui_icon('home') ?>Home<?= ui_icon('chevron', 16) ?></a>
         <a href="/search?sort=newest"><?= ui_icon('grid') ?>All products<?= ui_icon('chevron', 16) ?></a>
-        <a href="/about" class="<?= $__currentPath === '/about' ? 'active' : '' ?>"><?= ui_icon('info') ?>About us<?= ui_icon('chevron', 16) ?></a>
+        <?php if (site_page_enabled('about')): ?><a href="/about" class="<?= $__currentPath === '/about' ? 'active' : '' ?>"><?= ui_icon('info') ?>About us<?= ui_icon('chevron', 16) ?></a><?php endif; ?>
         <a href="/contact" class="<?= $__currentPath === '/contact' ? 'active' : '' ?>"><?= ui_icon('mail') ?>Contact<?= ui_icon('chevron', 16) ?></a>
         <a href="/orders"><?= ui_icon('truck') ?>Track an order<?= ui_icon('chevron', 16) ?></a>
       </nav>

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build a local test image, tagged to match exactly what docker-compose.yml
-# references (ghcr.io/techzeeland/kafeel:latest). This is for local
+# references (online-store:local). This is for local
 # development/testing only — production deploys (including via Portainer)
 # should use the image .github/workflows/docker-publish.yml already
 # published to GHCR, not a local build.
@@ -11,8 +11,8 @@
 # up live via the bind mount in docker-compose.override.yml.
 set -euo pipefail
 cd "$(dirname "$0")"
-docker build -t ghcr.io/techzeeland/kafeel:latest -f docker/php/Dockerfile .
+docker build -t online-store:local -f docker/php/Dockerfile .
 echo
-echo "Built ghcr.io/techzeeland/kafeel:latest locally."
+echo "Built online-store:local locally."
 echo "Run 'docker compose up -d' to (re)create the stack with it, or"
 echo "'docker compose up -d --force-recreate web' if the stack is already running."

@@ -11,7 +11,7 @@
   var effect = (currentScript && currentScript.getAttribute('data-effect')) || 'snow';
   if (effect === 'none') return;
 
-  var KEY = 'kafeel-fx';
+  var KEY = 'store-fx';
   var btns = document.querySelectorAll('[data-fx-toggle]');
   var reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 

@@ -35,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = 'The store email address doesn\'t look right.';
         if (trim($_POST['store_name'] ?? '') === '') $errors[] = 'The store name can\'t be empty.';
         $links = [];
-        foreach (['facebook' => 'Facebook page', 'messenger' => 'Messenger', 'instagram' => 'Instagram', 'youtube' => 'YouTube'] as $k => $label) {
+        foreach (['facebook' => 'Facebook page', 'messenger' => 'Messenger', 'instagram' => 'Instagram', 'youtube' => 'YouTube', 'tiktok' => 'TikTok'] as $k => $label) {
             $u = trim($_POST['social_' . $k] ?? '');
             if ($u !== '' && !preg_match('~^https?://[^\s]+$~i', $u)) $errors[] = $label . ' link must start with https:// (or leave it empty to hide it).';
             $links[$k] = $u;
@@ -213,7 +213,7 @@ require __DIR__ . '/includes/header.php';
     <h3 class="subhead">Social links</h3>
     <p class="help">Shown as icons in the footer, mobile menu and contact page. Leave one empty to hide it.</p>
     <div class="field-row">
-      <?php foreach (['facebook' => ['Facebook page', 'https://www.facebook.com/yourpage'], 'messenger' => ['Messenger', 'https://m.me/yourpage'], 'instagram' => ['Instagram', 'https://www.instagram.com/yourname/'], 'youtube' => ['YouTube', 'https://www.youtube.com/@yourchannel'], 'whatsapp' => ['WhatsApp', 'https://wa.me/8801XXXXXXXXX'], 'signal' => ['Signal', 'https://signal.me/#p/+8801XXXXXXXXX']] as $k => [$label, $ph]): ?>
+      <?php foreach (['facebook' => ['Facebook page', 'https://www.facebook.com/yourpage'], 'messenger' => ['Messenger', 'https://m.me/yourpage'], 'instagram' => ['Instagram', 'https://www.instagram.com/yourname/'], 'tiktok' => ['TikTok', 'https://www.tiktok.com/@yourname'], 'youtube' => ['YouTube', 'https://www.youtube.com/@yourchannel'], 'whatsapp' => ['WhatsApp', 'https://wa.me/8801XXXXXXXXX'], 'signal' => ['Signal', 'https://signal.me/#p/+8801XXXXXXXXX']] as $k => [$label, $ph]): ?>
         <div class="field"><label for="social_<?= $k ?>"><?= e($label) ?></label><input type="<?= in_array($k, ['whatsapp', 'signal'], true) ? 'text' : 'url' ?>" id="social_<?= $k ?>" name="social_<?= $k ?>" value="<?= e($section === 'store' ? ($_POST['social_' . $k] ?? '') : ($socials[$k]['url'] ?? '')) ?>" placeholder="<?= e($ph) ?>"><?php if ($k === 'whatsapp'): ?><div class="hint">A wa.me link, or just the number (01XXXXXXXXX works) — it's turned into a link for you. Shown with the other social icons.</div><?php endif; ?><?php if ($k === 'signal'): ?><div class="hint">A signal.me link, or just the number (01XXXXXXXXX works) — it's turned into a link for you. Shown with the other social icons.</div><?php endif; ?></div>
       <?php endforeach; ?>
     </div>

@@ -56,7 +56,7 @@ require __DIR__ . '/includes/header.php';
     <div class="panel" style="padding:20px;margin-bottom:20px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:14px;">
       <div><div style="font-size:0.78rem;color:var(--ink-faint);">Status</div><span class="status-pill status-<?= e($order['status']) ?>"><?= e(ucfirst($order['status'])) ?></span></div>
       <div><div style="font-size:0.78rem;color:var(--ink-faint);">Placed on</div><?= fmt_dt($order['created_at'], 'd M Y, H:i') ?></div>
-      <div><div style="font-size:0.78rem;color:var(--ink-faint);">Payment</div><?= e(payment_method_label($order['payment_method'])) ?></div>
+      <div><div style="font-size:0.78rem;color:var(--ink-faint);">Payment</div><?= e(order_payment_name($order)) ?><?php if (order_payment_proof($order) !== ''): ?><div style="font-size:.8rem;color:var(--ink-faint);"><?= e(order_payment_proof($order)) ?></div><?php endif; ?></div>
       <div><div style="font-size:0.78rem;color:var(--ink-faint);">Total</div><strong class="mono"><?= money($order['total']) ?></strong></div>
     </div>
 

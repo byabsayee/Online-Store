@@ -246,9 +246,9 @@ function erp_request_is_https(): bool {
 /** A tiny advisory lock so the worker and an opportunistic flush never send the same batch twice. */
 function erp_lock(string $name, int $wait = 0): bool {
     $st = db()->prepare('SELECT GET_LOCK(?, ?)');
-    $st->execute(['kafeel_erp_' . $name, $wait]);
+    $st->execute(['store_erp_' . $name, $wait]);
     return (int) $st->fetchColumn() === 1;
 }
 function erp_unlock(string $name): void {
-    db()->prepare('SELECT RELEASE_LOCK(?)')->execute(['kafeel_erp_' . $name]);
+    db()->prepare('SELECT RELEASE_LOCK(?)')->execute(['store_erp_' . $name]);
 }

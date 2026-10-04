@@ -7,7 +7,7 @@
  */
 const MIGRATE_BASELINE = 3;
 /** Highest migration number the code expects; all_settings() upgrades the database until it reaches it. */
-const MIGRATE_LATEST = 13;
+const MIGRATE_LATEST = 14;
 
 function migration_dirs(): array {
     return [
@@ -24,7 +24,7 @@ function run_pending_migrations(PDO $pdo, int $current): int {
 
     $files = glob($dir . '/[0-9][0-9][0-9]_*.sql') ?: [];
     sort($files);
-    $lock = (int) $pdo->query("SELECT GET_LOCK('kafeel_migrate', 15)")->fetchColumn();
+    $lock = (int) $pdo->query("SELECT GET_LOCK('store_migrate', 15)")->fetchColumn();
     if (!$lock) return $current;
     try {
         // Another request may have finished while we waited for the lock.
@@ -43,7 +43,7 @@ function run_pending_migrations(PDO $pdo, int $current): int {
             $current = $version;
         }
     } finally {
-        $pdo->query("SELECT RELEASE_LOCK('kafeel_migrate')");
+        $pdo->query("SELECT RELEASE_LOCK('store_migrate')");
     }
     return $current;
 }

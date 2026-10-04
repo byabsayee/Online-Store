@@ -42,26 +42,26 @@ require __DIR__ . '/includes/header.php';
 <section class="hero">
   <div class="wrap">
     <div>
-      <span class="hero-eyebrow">No. 001 — Field-tested essentials</span>
-      <h1>The bag you carry carries a significant fragment of your personality.</h1>
-      <p class="lead">Carefully chosen materials for the perfect outcome — the kind of thing you reach for daily and never think to replace.</p>
+      <?php $__hc = home_content(); ?>
+      <?php if ($__hc['eyebrow'] !== ''): ?><span class="hero-eyebrow"><?= e($__hc['eyebrow']) ?></span><?php endif; ?>
+      <h1><?= e($__hc['headline']) ?></h1>
+      <?php if ($__hc['lead'] !== ''): ?><p class="lead"><?= e($__hc['lead']) ?></p><?php endif; ?>
       <div class="hero-actions">
-        <a href="/search?sort=newest" class="btn btn-primary">Shop all products</a>
+        <a href="/search?sort=newest" class="btn btn-primary"><?= e($__hc['cta']) ?></a>
       </div>
     </div>
+    <?php if ($__hc['points']): ?>
     <div class="hero-card">
-      <span class="stamp">EST.<br>2026</span>
-      <h3>Why people keep coming back</h3>
+      <?php if ($__hc['stamp'] !== ''): ?><span class="stamp"><?= $__hc['stamp_html'] ?></span><?php endif; ?>
+      <h3><?= e($__hc['card_title']) ?></h3>
       <ul>
-        <li>Hand-picked catalog, no filler products</li>
-        <li>Cash on delivery or pay using online methods</li>
-        <li>Delivered in <?= (int)DELIVERY_DAYS_MIN ?>–<?= (int)DELIVERY_DAYS_MAX ?> days nationwide</li>
-        <li>Simple returns within 7 days</li>
-        <li>Peace of mind when it's about quality</li>
+        <?php foreach ($__hc['points'] as $__pt): ?><li><?= e($__pt) ?></li><?php endforeach; ?>
       </ul>
     </div>
+    <?php endif; ?>
   </div>
 </section>
+<?= ad_slot('home_top') ?>
 
 <section class="wrap">
   <div class="trust-strip">
@@ -109,30 +109,31 @@ require __DIR__ . '/includes/header.php';
     </div>
   </div>
 </section>
+<?= ad_slot('home_mid') ?>
 
 <section class="section section-alt">
   <div class="wrap">
     <div class="section-head">
       <div>
-        <span class="tag">The <?= e($__store['name']) ?> promise</span>
-        <h2>Why choose <?= e($__store['name']) ?></h2>
+        <span class="tag"><?= e($__hc['why_tag']) ?></span>
+        <h2><?= e($__hc['why_title']) ?></h2>
       </div>
     </div>
     <div class="why-grid">
       <div class="why-card">
         <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 3 6v6c0 5.5 3.8 9.7 9 11 5.2-1.3 9-5.5 9-11V6z"/><path d="M9 12l2 2 4-4"/></svg></span>
-        <h3>Curated, not crowded</h3>
-        <p>Every product is chosen for how it holds up in daily use — no filler, no drop-shipped junk.</p>
+        <h3><?= e($__hc['cards'][0][0]) ?></h3>
+        <p><?= e($__hc['cards'][0][1]) ?></p>
       </div>
       <div class="why-card">
         <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20"/></svg></span>
-        <h3>Pay your way</h3>
-        <p>Cash on delivery on every order — see and check your item before you pay a taka. Online payment is on the way.</p>
+        <h3><?= e($__hc['cards'][1][0]) ?></h3>
+        <p><?= e($__hc['cards'][1][1]) ?></p>
       </div>
       <div class="why-card">
         <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l4-8h10l4 8"/><path d="M3 12v6a1 1 0 0 0 1 1h1"/><path d="M21 12v6a1 1 0 0 1-1 1h-1"/><circle cx="8" cy="19" r="2"/><circle cx="16" cy="19" r="2"/></svg></span>
-        <h3>Delivered fast</h3>
-        <p>Orders reach you in <?= (int)DELIVERY_DAYS_MIN ?>–<?= (int)DELIVERY_DAYS_MAX ?> days, carefully packed so nothing shifts in transit.</p>
+        <h3><?= e($__hc['cards'][2][0]) ?></h3>
+        <p><?= e($__hc['cards'][2][1]) ?></p>
       </div>
     </div>
   </div>

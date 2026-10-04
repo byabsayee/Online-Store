@@ -17,3 +17,4 @@ LICENSE
 .DS_Store
 *.swp
 build.sh
+uploads/fonts/*

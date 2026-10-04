@@ -79,7 +79,8 @@ function build_invoice_html(array $order, array $items): string {
         . '<div class="name">' . e($store['name']) . '</div>'
         . invoice_detail_line('Phone', e(implode(' / ', store_phones())))
         . invoice_detail_line('Email', e($store['email']))
-        . invoice_detail_line('Address', nl2br(e(trim($store['address']))));
+        . invoice_detail_line('Address', nl2br(e(trim($store['address']))))
+        . (trim((string) get_setting('invoice_tax_number', '')) !== '' ? invoice_detail_line('Tax no.', e(trim((string) get_setting('invoice_tax_number', '')))) : '');
 
     // Logo above the shop name (PDF can embed png/jpg/gif/svg; skipped if the file is missing or an unsupported type).
     $logoHtml = '';
@@ -120,11 +121,11 @@ function build_invoice_html(array $order, array $items): string {
     </style></head><body>
 
     <table><tr>
-        <td style="width:58%;vertical-align:top;">' . $logoHtml . $nameHtml . '<div class="doc-label">Invoice</div></td>
+        <td style="width:58%;vertical-align:top;">' . $logoHtml . $nameHtml . '<div class="doc-label">Invoice</div>' . (trim((string) get_setting('invoice_header', '')) !== '' ? '<div class="muted small">' . e(trim((string) get_setting('invoice_header', ''))) . '</div>' : '') . '</td>
         <td style="text-align:right;vertical-align:top;">
             <div style="font-size:13px;font-weight:bold;">#' . e($order['order_number']) . '</div>
             <div class="muted">Date: ' . e(fmt_dt($order['created_at'], 'd M Y')) . '</div>
-            <div class="muted">Payment: ' . e(payment_method_label($order['payment_method'])) . '</div>
+            <div class="muted">Payment: ' . e(order_payment_name($order)) . '</div>
             <div style="margin-top:6px;"><span class="status-badge">&nbsp;' . e(strtoupper($statusLabels[$order['status']] ?? $order['status'])) . '&nbsp;</span></div>
         </td>
     </tr></table>
@@ -154,7 +155,7 @@ function build_invoice_html(array $order, array $items): string {
     </table>
     ' . $notes . '
 
-    <div class="muted small" style="margin-top:34px;text-align:center;">Thank you for shopping with ' . e($store['name']) . '.</div>
+    <div class="muted small" style="margin-top:34px;text-align:center;">Thank you for shopping with ' . e($store['name']) . '.' . (trim((string) get_setting('invoice_footer', '')) !== '' ? '<br>' . nl2br(e(trim((string) get_setting('invoice_footer', '')))) : '') . '</div>
     </body></html>';
 }
 

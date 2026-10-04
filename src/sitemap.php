@@ -9,8 +9,9 @@ $add = function (string $path, ?string $lastmod = null, string $freq = 'weekly',
     $urls[] = ['loc' => abs_url($path), 'lastmod' => $lastmod ? gmdate('c', strtotime($lastmod . ' UTC')) : null, 'freq' => $freq, 'prio' => $prio];
 };
 $add('/', null, 'daily', '1.0');
-foreach (['/about', '/contact'] as $p) $add($p, null, 'monthly', '0.4');
-foreach (['/privacy-policy', '/terms', '/refund-policy', '/shipping-policy'] as $p) $add($p, LEGAL_LAST_UPDATED, 'yearly', '0.2');
+$__off = site_pages_disabled_urls();
+foreach (['/about', '/faq', '/contact', '/partners'] as $p) if (!in_array($p, $__off, true)) $add($p, null, 'monthly', '0.4');
+foreach (['/privacy-policy', '/terms', '/refund-policy', '/shipping-policy'] as $p) if (!in_array($p, $__off, true)) $add($p, LEGAL_LAST_UPDATED, 'yearly', '0.2');
 
 foreach (db()->query('SELECT slug FROM categories WHERE is_active = 1 ORDER BY sort_order, name')->fetchAll() as $c) {
     $add(category_url($c), null, 'weekly', '0.7');

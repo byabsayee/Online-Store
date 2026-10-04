@@ -1,3 +1,4 @@
+<?= ad_slot('footer_above') ?>
 </main>
 <?php
 $__store = $__store ?? store_info();
@@ -24,28 +25,23 @@ $__assetV = $__assetV ?? fn (string $f) => (int) @filemtime(__DIR__ . '/../asset
           <?php if ($__store['email'] !== ''): ?><li><?= ui_icon('mail', 16) ?><a href="mailto:<?= e($__store['email']) ?>"><?= e($__store['email']) ?></a></li><?php endif; ?>
         </ul>
       </div>
+      <?php foreach (footer_groups() as $__gt => $__gl): ?>
       <div>
-        <h4>Support</h4>
+        <h4><?= e($__gt) ?></h4>
         <ul>
-          <li><a href="/contact">Contact us</a></li>
-          <li><a href="/about">About the shop</a></li>
-          <li><a href="/orders">Track an order</a></li>
-          <li><a href="<?= is_logged_in() ? '/account' : '/login' ?>">My account</a></li>
+          <?php foreach ($__gl as $__l): $__u = $__l['url']; if ($__u === '/account') $__u = is_logged_in() ? '/account' : '/login'; ?>
+          <li><a href="<?= e($__u) ?>"<?= $__l['new_tab'] ? ' target="_blank" rel="noopener"' : '' ?>><?= e($__l['label']) ?></a></li>
+          <?php endforeach; ?>
         </ul>
       </div>
-      <div>
-        <h4>Legal</h4>
-        <ul>
-          <li><a href="/terms">Terms of Service</a></li>
-          <li><a href="/privacy-policy">Privacy Policy</a></li>
-          <li><a href="/refund-policy">Refund & Return Policy</a></li>
-          <li><a href="/shipping-policy">Shipping & Delivery Policy</a></li>
-        </ul>
-      </div>
+      <?php endforeach; ?>
     </div>
     <div class="footer-bottom">
-      <span>© <?= date('Y') ?> <?= e($__store['name']) ?>. All rights reserved.</span>
-      <span>Developed by <a href="https://github.com/TechZeeLand">TechZeeLand</a></span>
+      <span>© <?= date('Y') ?> <?= e($__store['name']) ?>. All rights reserved.<?php if (footer_extra_text() !== ''): ?> <?= e(footer_extra_text()) ?><?php endif; ?></span>
+      <span class="footer-credits">
+        <?php if ($__credit = site_credit()): ?><?php if ($__credit['url'] !== ''): ?><a href="<?= e($__credit['url']) ?>" target="_blank" rel="noopener"><?= e($__credit['text']) ?></a><?php else: ?><?= e($__credit['text']) ?><?php endif; ?><?php endif; ?>
+        <?php if ($__src = source_link()): ?><?= site_credit() ? ' · ' : '' ?><a href="<?= e($__src) ?>" target="_blank" rel="noopener">Source code</a><?php endif; ?>
+      </span>
     </div>
   </div>
 </footer>
@@ -69,10 +65,19 @@ $__cur = fn (string $k) => !empty($__tabActive[$k]) ? ' active" aria-current="pa
   <a href="<?= $__user ? '/account' : '/login' ?>" class="tab<?= $__cur('account') ?>"><?= ui_icon('user', 22) ?><span><?= $__user ? 'Account' : 'Log in' ?></span></a>
 </nav>
 
+<?php if (cookie_notice_on()): ?>
+<div id="cookieNotice" class="cookie-notice" role="dialog" aria-label="Cookie notice" hidden>
+  <p>We use cookies to keep the site working<?= !empty($GLOBALS['__ads_used']) ? ' and to show ads' : '' ?>. See our <a href="/privacy-policy">Privacy Policy</a>.</p>
+  <div><button type="button" class="btn btn-primary btn-sm" data-consent="yes">Accept</button> <button type="button" class="btn btn-outline btn-sm" data-consent="no">Decline</button></div>
+</div>
+<script>(function(){var n=document.getElementById('cookieNotice'),v=null;try{v=localStorage.getItem('store-consent')}catch(e){}if(!v&&n)n.hidden=false;
+document.querySelectorAll('[data-consent]').forEach(function(b){b.addEventListener('click',function(){var c=b.getAttribute('data-consent');try{localStorage.setItem('store-consent',c)}catch(e){}n.hidden=true;if(c==='yes')document.dispatchEvent(new Event('store-consent-yes'))})})})();</script>
+<?php endif; ?>
 <div id="toast" role="status" aria-live="polite"></div>
 <script src="/assets/js/main.js?v=<?= $__assetV('js/main.js') ?>"></script>
 <?php if (!empty($__theme['seasonal_enabled'])): ?>
 <script src="/assets/js/seasonal.js?v=<?= $__assetV('js/seasonal.js') ?>" data-effect="<?= e($__theme['seasonal_effect']) ?>"></script>
 <?php endif; ?>
+<?= ads_script_html() ?>
 </body>
 </html>

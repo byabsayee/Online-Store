@@ -8,6 +8,29 @@ function nav_link(string $href, string $label, array $files, string $current, st
     $cls = in_array($current, $files, true) ? ' class="active"' : '';
     return '<a href="' . $href . '"' . $cls . '><span class="ico">' . $icon . '</span>' . e($label) . '</a>';
 }
+/** Store-settings screens, grouped for the tab bar: group => [file => label]. */
+function admin_settings_groups(): array {
+    return [
+        'Store' => ['settings.php' => 'Details & email', 'regional.php' => 'Region & invoices', 'notifications.php' => 'Order alerts'],
+        'Look' => ['branding.php' => 'Branding', 'theme_settings.php' => 'Theme', 'fonts.php' => 'Fonts'],
+        'Content' => ['pages.php' => 'Pages', 'footer_links.php' => 'Footer', 'partners.php' => 'Partners', 'ads.php' => 'Ads'],
+        'Checkout' => ['payment_methods.php' => 'Payments', 'delivery_tax.php' => 'Delivery & tax'],
+        'Connect' => ['erp.php' => 'Accounting link', 'preset.php' => 'Backup & presets'],
+    ];
+}
+function admin_settings_files(): array { $f = ['settings_hub.php', 'setup.php']; foreach (admin_settings_groups() as $g) foreach ($g as $k => $_) $f[] = $k; return $f; }
+function admin_settings_tabs(string $current): string {
+    if (!in_array($current, admin_settings_files(), true) || $current === 'setup.php') return '';
+    $h = '<div class="settings-tabs"><a href="/admin/settings_hub.php" class="hub' . ($current === 'settings_hub.php' ? ' active' : '') . '">All settings</a>';
+    foreach (admin_settings_groups() as $g => $items) {
+        $h .= '<span class="grp"><i>' . e($g) . '</i>';
+        foreach ($items as $f => $l) $h .= '<a href="/admin/' . $f . '"' . ($f === $current ? ' class="active"' : '') . '>' . e($l) . '</a>';
+        $h .= '</span>';
+    }
+    return $h . '</div>';
+}
+// Brand-new store: the owner lands in the setup wizard first.
+if (!setup_done() && admin_is_owner() && $__path !== 'setup.php' && !in_array($__path, ['account.php', 'logout.php'], true)) { redirect('/admin/setup.php'); }
 $__ico = [
     'dash' => '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>',
     'box' => '<svg viewBox="0 0 24 24"><path d="M21 8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.7z"/><path d="M3.3 7 12 12l8.7-5M12 22V12"/></svg>',
@@ -45,27 +68,21 @@ $__ico = [
     <a href="/admin/index.php" class="brand"><?= brand_inner('admin') ?></a>
     <nav>
       <?= nav_link('/admin/index.php', 'Dashboard', ['index.php'], $__path, $__ico['dash']) ?>
-      <div class="section-label">Catalog</div>
+      <div class="section-label">Sell</div>
+      <?= nav_link('/admin/orders.php', 'Orders', ['orders.php', 'order_detail.php'], $__path, $__ico['cart']) ?>
       <?= nav_link('/admin/products.php', 'Products', ['products.php', 'product_form.php'], $__path, $__ico['box']) ?>
       <?= nav_link('/admin/categories.php', 'Categories', ['categories.php', 'category_form.php'], $__path, $__ico['tag']) ?>
-      <div class="section-label">Sales</div>
-      <?= nav_link('/admin/orders.php', 'Orders', ['orders.php', 'order_detail.php'], $__path, $__ico['cart']) ?>
-      <?= nav_link('/admin/coupons.php', 'Coupons', ['coupons.php', 'coupon_form.php'], $__path, $__ico['ticket']) ?>
-      <?php if (admin_is_owner()): ?><?= nav_link('/admin/payment_methods.php', 'Payment methods', ['payment_methods.php'], $__path, $__ico['ticket']) ?>
-      <?= nav_link('/admin/delivery_tax.php', 'Delivery & tax', ['delivery_tax.php'], $__path, $__ico['gear']) ?>
-      <?= nav_link('/admin/erp.php', 'Accounting link' . (function_exists('erp_attention_count') && ($__n = erp_attention_count()) ? ' (' . $__n . ')' : ''), ['erp.php'], $__path, $__ico['log']) ?><?php endif; ?>
       <?= nav_link('/admin/reviews.php', 'Reviews', ['reviews.php'], $__path, $__ico['star']) ?>
+      <div class="section-label">Grow</div>
+      <?= nav_link('/admin/coupons.php', 'Coupons', ['coupons.php', 'coupon_form.php'], $__path, $__ico['ticket']) ?>
       <?php if (admin_is_owner()): ?><?= nav_link('/admin/promotions.php', 'Promotional emails', ['promotions.php'], $__path, $__ico['mail']) ?><?php endif; ?>
-      <div class="section-label">People</div>
       <?= nav_link('/admin/users.php', 'Customers', ['users.php'], $__path, $__ico['users']) ?>
-      <?php if (admin_is_owner()): ?><?= nav_link('/admin/staff.php', 'Staff', ['staff.php', 'staff_form.php'], $__path, $__ico['badge']) ?><?php endif; ?>
-      <div class="section-label">Site</div>
       <?php if (admin_is_owner()): ?>
-      <?= nav_link('/admin/branding.php', 'Branding & sharing', ['branding.php'], $__path, $__ico['image']) ?>
-      <?= nav_link('/admin/settings.php', 'Settings & email', ['settings.php'], $__path, $__ico['gear']) ?>
-      <?= nav_link('/admin/theme_settings.php', 'Theme & effects', ['theme_settings.php'], $__path, $__ico['brush']) ?>
+      <div class="section-label">Store</div>
+      <?= nav_link('/admin/settings_hub.php', 'Store settings', admin_settings_files(), $__path, $__ico['gear']) ?>
+      <?= nav_link('/admin/staff.php', 'Staff', ['staff.php', 'staff_form.php'], $__path, $__ico['badge']) ?>
+      <?= nav_link('/admin/logs.php', 'Activity log', ['logs.php'], $__path, $__ico['log']) ?>
       <?php endif; ?>
-      <?php if (admin_is_owner()): ?><?= nav_link('/admin/logs.php', 'Activity log', ['logs.php'], $__path, $__ico['log']) ?><?php endif; ?>
       <?= nav_link('/admin/account.php', 'My account', ['account.php'], $__path, $__ico['key']) ?>
     </nav>
   </aside>
@@ -80,6 +97,7 @@ $__ico = [
       </div>
     </div>
     <div class="admin-content">
+      <?= admin_settings_tabs($__path) ?>
       <?php if (!empty($GLOBALS['__migration_error'])): ?>
         <div class="alert alert-error"><strong>Database upgrade failed:</strong> <?= e($GLOBALS['__migration_error']) ?> — run the newest file in <code>sql/migrations/</code> manually (phpMyAdmin) and reload.</div>
       <?php endif; ?>

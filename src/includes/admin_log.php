@@ -90,7 +90,7 @@ const ADMIN_LOG_GROUPS = [
  * Records one admin action.
  *
  * @param string      $action     "group.verb", see ADMIN_LOG_ACTIONS
- * @param string      $summary    one readable line, e.g. 'Order RA-260921-AB12C: Pending → Processing'
+ * @param string      $summary    one readable line, e.g. 'Order ORD-260921-AB12C: Pending → Processing'
  * @param string|null $targetType 'order' | 'product' | 'category' | 'customer' | 'coupon' | 'review' | null
  * @param int|null    $targetId   id of the thing acted on (lets the page link to it)
  * @param array       $details    extra facts shown when the row is expanded (e.g. field-by-field changes)

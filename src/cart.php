@@ -59,8 +59,7 @@ require __DIR__ . '/includes/header.php';
       <div class="summary-row"><span>Subtotal</span><span class="val"><?= money($totals['subtotal']) ?></span></div>
       <div class="summary-row"><span>Shipping</span><span class="val">Calculated at checkout</span></div>
       <p style="font-size:0.8rem;color:var(--ink-soft);margin-top:8px;">
-        <?= money(shipcfg('inside')) ?> inside Dhaka · <?= money(shipcfg('suburbs')) ?> suburbs · <?= money(shipcfg('outside')) ?> outside Dhaka
-        (+<?= money(shipcfg('extra_kg')) ?>/kg over <?= (int)shipcfg('free_kg') ?>kg)
+        <?= e(shipping_summary_text()) ?>
       </p>
       <a href="/checkout" class="btn btn-primary btn-block cart-checkout-desktop" style="margin-top:16px;">Proceed to checkout</a>
     </div>
@@ -72,5 +71,6 @@ require __DIR__ . '/includes/header.php';
   </div>
 <?php endif; ?>
 </div>
+<?= ad_slot('cart_below') ?>
 
 <?php require __DIR__ . '/includes/footer.php'; ?>

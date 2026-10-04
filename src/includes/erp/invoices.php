@@ -2,7 +2,7 @@
 /**
  * Which invoice the store shows its customers.
  *
- *   'kafeel' — the store's own invoice (ID = the order number, e.g. RA-260928-AB12C).
+ *   'store' — the store's own invoice (ID = the order number, e.g. ORD-260928-AB12C).
  *   'book'   — the invoice the connected Byabsayee book generated for the order (ID = the book's invoice number, e.g. INV-000123).
  *
  * The owner chooses under Admin → Accounting link. Default: the book's invoice while the store is linked, the store's own otherwise.
@@ -12,16 +12,16 @@
  */
 require_once __DIR__ . '/core.php';
 
-/** The owner's explicit choice ('kafeel' | 'book'), or '' when they never chose (= default). */
+/** The owner's explicit choice ('store' | 'book'), or '' when they never chose (= default). */
 function invoice_source_pref(): string {
     $v = (string) get_setting('invoice_source', '');
-    return in_array($v, ['kafeel', 'book'], true) ? $v : '';
+    return in_array($v, ['store', 'book'], true) ? $v : '';
 }
 
 /** What customers get right now. */
 function invoice_source(): string {
-    if (!function_exists('erp_linked') || !erp_linked()) return 'kafeel';
-    return invoice_source_pref() === 'kafeel' ? 'kafeel' : 'book';
+    if (!function_exists('erp_linked') || !erp_linked()) return 'store';
+    return invoice_source_pref() === 'store' ? 'store' : 'book';
 }
 
 function order_book_invoice_no(array $o): ?string {

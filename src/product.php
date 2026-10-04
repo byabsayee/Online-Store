@@ -154,10 +154,10 @@ require __DIR__ . '/includes/header.php';
 
     <?php if ($product['short_desc']): ?><p class="desc"><?= e($product['short_desc']) ?></p><?php endif; ?>
 
-    <?php if (!empty($product['youtube_url']) && is_youtube_url($product['youtube_url'])): ?>
-      <a href="<?= e($product['youtube_url']) ?>" target="_blank" rel="noopener" class="video-btn" style="margin-bottom:18px;">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M23 12s0-3.6-.46-5.3a3 3 0 0 0-2.1-2.1C18.6 4 12 4 12 4s-6.6 0-8.44.6a3 3 0 0 0-2.1 2.1C1 8.4 1 12 1 12s0 3.6.46 5.3a3 3 0 0 0 2.1 2.1C5.4 20 12 20 12 20s6.6 0 8.44-.6a3 3 0 0 0 2.1-2.1C23 15.6 23 12 23 12z"/><path d="M9.8 8.6v6.8L15.8 12z" fill="#fff"/></svg>
-        Watch video
+    <?php if (!empty($product['link_url']) && preg_match('~^https?://~i', $product['link_url'])): ?>
+      <a href="<?= e($product['link_url']) ?>" target="_blank" rel="noopener nofollow" class="video-btn" style="margin-bottom:18px;">
+        <?= ui_icon('link', 18) ?>
+        <?= e($product['link_title'] ?: 'Learn more') ?>
       </a>
     <?php endif; ?>
 
@@ -255,8 +255,8 @@ require __DIR__ . '/includes/header.php';
           <div class="tag-list"><?php foreach ($tags as $t): ?><a href="/search?q=<?= urlencode($t) ?>"><?= e($t) ?></a><?php endforeach; ?></div>
         </div>
       <?php endif; ?>
-      <div><b>Shipping:</b> <?= money(shipcfg('inside')) ?> inside Dhaka · <?= money(shipcfg('suburbs')) ?> suburbs · <?= money(shipcfg('outside')) ?> outside Dhaka (+<?= money(shipcfg('extra_kg')) ?>/kg over <?= (int)shipcfg('free_kg') ?>kg)</div>
-      <div><b>Delivery time:</b> <?= (int)DELIVERY_DAYS_MIN ?>–<?= (int)DELIVERY_DAYS_MAX ?> days</div>
+      <div><b>Shipping:</b> <?= e(shipping_summary_text()) ?></div>
+      <div><b>Delivery time:</b> <?= e(implode('–', delivery_days_range())) ?> days</div>
       <div><b>Payment:</b> Cash on delivery <span style="color:var(--ink-faint);">(online payment coming soon)</span></div>
       <?php if ($warranty = warranty_label($product['warranty_days'] ?? null)): ?>
         <div><b>Warranty:</b> <?= e($warranty) ?></div>
@@ -274,10 +274,11 @@ require __DIR__ . '/includes/header.php';
 <?php endif; ?>
 
 <?php if ($variants): ?>
-<script>window.KAFEEL_PRODUCT = <?= json_encode($pickerData, $jsonFlags) ?>;</script>
+<script>window.STORE_PRODUCT = <?= json_encode($pickerData, $jsonFlags) ?>;</script>
 <script src="/assets/js/product.js?v=<?= (int) @filemtime(__DIR__ . '/assets/js/product.js') ?>"></script>
 <?php endif; ?>
 
+<?= ad_slot('product_below') ?>
 <section class="section reviews" id="reviews">
   <div class="wrap">
     <div class="section-head"><div><span class="tag">Customer reviews</span><h2>What customers say</h2></div></div>

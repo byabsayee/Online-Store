@@ -98,7 +98,8 @@ function flash_get(): array {
 /* ----------------------------------------------------- formatting --- */
 
 function money(float $amount): string {
-    return store_currency_symbol() . number_format($amount, 2);
+    $n = number_format($amount, currency_decimals());
+    return currency_position() === 'after' ? $n . ' ' . store_currency_symbol() : store_currency_symbol() . $n;
 }
 
 function slugify(string $text): string {
@@ -243,7 +244,7 @@ function product_url(array $product): string {
 function category_url(array $category): string {
     return '/category/' . rawurlencode($category['slug']);
 }
-/** $orderNumber is the public order code (e.g. RA-260925-AB12C), not the numeric id. */
+/** $orderNumber is the public order code (e.g. ORD-260925-AB12C), not the numeric id. */
 function order_url(string $orderNumber): string {
     return '/order/' . rawurlencode($orderNumber);
 }
@@ -426,11 +427,37 @@ function cart_totals(): array {
     ];
 }
 
-/** Human label for a delivery_area value. */
+/**
+ * Delivery zones. The three internal codes are fixed (the accounting link and stored orders use them), but the
+ * names are admin-editable and the 2nd/3rd zone can be switched off (Admin -> Delivery & tax).
+ */
+const DELIVERY_ZONE_KEYS = ['inside_dhaka' => 'inside', 'suburbs' => 'suburbs', 'outside_dhaka' => 'outside'];
+const DELIVERY_ZONE_DEFAULT_LABELS = ['inside_dhaka' => 'Inside Dhaka', 'suburbs' => 'Dhaka Suburbs', 'outside_dhaka' => 'Outside Dhaka'];
+
+/** Human label for a delivery_area value (the admin's own zone name). */
 function delivery_area_label(string $area): string {
-    if ($area === 'outside_dhaka') return 'Outside Dhaka';
-    if ($area === 'suburbs') return 'Dhaka Suburbs';
-    return 'Inside Dhaka';
+    if (!isset(DELIVERY_ZONE_KEYS[$area])) $area = 'inside_dhaka';
+    $v = trim((string) get_setting('zone_label_' . DELIVERY_ZONE_KEYS[$area], ''));
+    return $v !== '' ? $v : DELIVERY_ZONE_DEFAULT_LABELS[$area];
+}
+
+/** Zones customers can pick: code => label. The first zone is always available. */
+function delivery_zones(bool $enabledOnly = true): array {
+    $out = [];
+    foreach (DELIVERY_ZONE_KEYS as $code => $key) {
+        if ($enabledOnly && $code !== 'inside_dhaka' && get_setting('zone_off_' . $key, '0') === '1') continue;
+        $out[$code] = delivery_area_label($code);
+    }
+    return $out;
+}
+
+/** One line for product / cart pages: "Local ৳80 · Regional ৳100 (+৳20/kg over 1kg)". */
+function shipping_summary_text(): string {
+    $parts = [];
+    foreach (delivery_zones() as $code => $label) $parts[] = $label . ' ' . money(shipcfg(DELIVERY_ZONE_KEYS[$code]));
+    $t = implode(' · ', $parts);
+    if (shipcfg('extra_kg') > 0) $t .= ' (+' . money(shipcfg('extra_kg')) . '/kg over ' . rtrim(rtrim(number_format(shipcfg('free_kg'), 2, '.', ''), '0'), '.') . 'kg)';
+    return $t;
 }
 
 /**
@@ -945,9 +972,13 @@ function order_status_history(int $orderId, bool $forAdmin = false): array {
 }
 
 require_once __DIR__ . '/branding.php';
+require_once __DIR__ . '/site.php';
 require_once __DIR__ . '/admin_log.php';
 require_once __DIR__ . '/coupons.php';
 require_once __DIR__ . '/reviews.php';
 require_once __DIR__ . '/staff.php';
 require_once __DIR__ . '/erp/reconcile.php';
 require_once __DIR__ . '/erp/invoices.php';
+
+// The owner's time zone (Region & invoices) wins over the TZ default from .env.
+try { $__tz = get_setting('timezone', ''); if ($__tz && in_array($__tz, timezone_identifiers_list(), true)) date_default_timezone_set($__tz); } catch (Throwable $e) { /* settings table not there yet */ }

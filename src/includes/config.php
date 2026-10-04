@@ -19,11 +19,11 @@ function env_val(string $key, $default = null) {
  */
 if (!defined('DB_HOST')) {
     define('DB_HOST', env_val('DB_HOST', 'db'));
-    define('DB_NAME', env_val('DB_NAME', 'kafeel_db'));
+    define('DB_NAME', env_val('DB_NAME', 'store_db'));
     define('DB_USER', env_val('DB_USER', 'admin'));
     define('DB_PASS', env_val('DB_PASS', 'ChangeMe123!'));
 
-    define('SITE_NAME', env_val('SITE_NAME', 'Kafeel (كَفِيلْ)'));
+    define('SITE_NAME', env_val('SITE_NAME', 'Online Store'));
     define('SITE_URL', rtrim(env_val('SITE_URL', ''), '/')); // e.g. https://shop.example.com, blank = relative
     // Named STORE_CURRENCY_SYMBOL (not CURRENCY_SYMBOL) because PHP's
     // standard extension already defines a built-in CURRENCY_SYMBOL
@@ -49,19 +49,20 @@ if (!defined('DB_HOST')) {
     define('SMTP_USER', env_val('SMTP_USER', ''));
     define('SMTP_PASS', env_val('SMTP_PASS', ''));
     define('SMTP_SECURE', env_val('SMTP_SECURE', 'tls')); // tls | ssl | '' (none)
-    define('SMTP_FROM_EMAIL', env_val('SMTP_FROM_EMAIL', env_val('CONTACT_EMAIL', 'hello@kafeelshopbd.com')));
-    define('SMTP_FROM_NAME', env_val('SMTP_FROM_NAME', env_val('SITE_NAME', 'Kafeel')));
+    define('SMTP_FROM_EMAIL', env_val('SMTP_FROM_EMAIL', env_val('CONTACT_EMAIL', '')));
+    define('SMTP_FROM_NAME', env_val('SMTP_FROM_NAME', env_val('SITE_NAME', 'Online Store')));
 
     // --- Contact / social links ---
-    define('CONTACT_EMAIL', env_val('CONTACT_EMAIL', 'hello@kafeelshopbd.com'));
+    define('CONTACT_EMAIL', env_val('CONTACT_EMAIL', ''));
     define('CONTACT_PHONE', env_val('CONTACT_PHONE', ''));
     define('CONTACT_PHONE_2', env_val('CONTACT_PHONE_2', '')); // optional second number
     define('STORE_ADDRESS', env_val('STORE_ADDRESS', ''));
-    define('SOCIAL_FACEBOOK', env_val('SOCIAL_FACEBOOK', 'https://www.facebook.com/kafeelshopbd'));
-    define('SOCIAL_FACEBOOK_MESSENGER', env_val('SOCIAL_FACEBOOK_MESSENGER', 'https://www.m.me/kafeelshopbd'));
-    define('SOCIAL_INSTAGRAM', env_val('SOCIAL_INSTAGRAM', 'https://www.instagram.com/kafeelbd/'));
-    define('SOCIAL_YOUTUBE', env_val('SOCIAL_YOUTUBE', 'https://www.youtube.com/@Kafeelbd'));
+    define('SOCIAL_FACEBOOK', env_val('SOCIAL_FACEBOOK', ''));
+    define('SOCIAL_FACEBOOK_MESSENGER', env_val('SOCIAL_FACEBOOK_MESSENGER', ''));
+    define('SOCIAL_INSTAGRAM', env_val('SOCIAL_INSTAGRAM', ''));
+    define('SOCIAL_YOUTUBE', env_val('SOCIAL_YOUTUBE', ''));
     define('SOCIAL_WHATSAPP', env_val('SOCIAL_WHATSAPP', '')); // a wa.me link, or just the number
+    define('SOCIAL_TIKTOK', env_val('SOCIAL_TIKTOK', ''));
     define('SOCIAL_SIGNAL', env_val('SOCIAL_SIGNAL', '')); // a signal.me link, or just the number
 
     define('UPLOAD_DIR', __DIR__ . '/../uploads/products');

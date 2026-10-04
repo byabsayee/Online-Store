@@ -680,27 +680,9 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- Seed data
 -- ============================================================
 
--- Default admin login -> username: admin  password: ChangeMe123! (CHANGE THIS before going live)
-INSERT INTO admins (username, name, password_hash, role) VALUES
-('admin', 'admin', '$2b$10$t65uPHFANoBh6cQGF5pB9Ow1R6T2bR2JaMqJsWE1TNgjilZdgl5Wq', 'owner');
-
-INSERT INTO categories (name, slug, description, sort_order) VALUES
-('EDC Gear', 'edc-gear', 'Everyday carry tools, pocket knives, keychains and organizers.', 1),
-('Bags & Carry', 'bags-carry', 'Slings, backpacks and pouches built for daily use.', 2),
-('Leather Goods', 'leather-goods', 'Wallets, cardholders and full-grain leather accessories.', 3),
-('Customized', 'customized', 'Engraved, monogrammed and made-to-order pieces.', 4);
-
-INSERT INTO products (category_id, name, slug, sku, short_desc, description, price, compare_price, stock, is_active, is_featured) VALUES
-(1, 'Titanium Pocket Pry Bar', 'titanium-pocket-pry-bar', 'EDC-001', 'Compact titanium multi-tool for keychain carry.', 'A compact titanium pry bar with bottle opener, flathead and box-cutter notch. Fits any keychain and weighs under 15g.', 950.00, 1100.00, 60, 1, 1),
-(1, 'Brass Keychain Organizer', 'brass-keychain-organizer', 'EDC-002', 'Keeps keys quiet and organized.', 'A solid brass keychain clip that keeps your keys organized and silent in your pocket. Ages beautifully with a natural patina.', 720.00, NULL, 45, 1, 0),
-(1, 'Mini EDC Flashlight', 'mini-edc-flashlight', 'EDC-003', '400 lumen rechargeable pocket light.', 'A rechargeable 400-lumen pocket flashlight with pocket clip, three brightness modes and USB-C charging.', 1250.00, 1450.00, 40, 1, 1),
-(2, 'Waxed Canvas Sling Bag', 'waxed-canvas-sling-bag', 'BAG-001', 'Compact crossbody sling with leather trim.', 'A weatherproof waxed-canvas sling bag with leather trim, padded strap and organized interior pockets for daily carry.', 2450.00, 2800.00, 40, 1, 1),
-(2, 'Leather Tech Pouch', 'leather-tech-pouch', 'BAG-002', 'Full-grain leather pouch for EDC & cables.', 'A full-grain leather pouch for carrying EDC gear, cables and chargers. Ages with a rich patina over time.', 1350.00, 1550.00, 35, 1, 1),
-(2, 'Canvas Travel Pouch Set', 'canvas-travel-pouch-set', 'BAG-003', 'Three-piece packing pouch set.', 'A set of three durable canvas packing pouches in graduated sizes, with brass zippers and leather pulls.', 980.00, NULL, 55, 1, 0),
-(3, 'Full-Grain Bifold Wallet', 'full-grain-bifold-wallet', 'LTH-001', 'Hand-stitched leather bifold wallet.', 'A hand-stitched full-grain leather bifold wallet with six card slots, a bill compartment and a slim profile that ages beautifully.', 1650.00, 1900.00, 70, 1, 1),
-(3, 'Slim Leather Cardholder', 'slim-leather-cardholder', 'LTH-002', 'Minimalist front-pocket cardholder.', 'A minimalist front-pocket cardholder in vegetable-tanned leather, holding up to six cards with a central pull-tab.', 850.00, NULL, 90, 1, 0),
-(3, 'Leather Belt, Classic Brown', 'leather-belt-classic-brown', 'LTH-003', 'Full-grain leather belt with brass buckle.', 'A full-grain leather belt in classic brown with a solid brass buckle, stitched edges and a break-in that only gets better.', 1200.00, 1400.00, 50, 1, 0),
-(4, 'Personalized Engraved Keychain', 'personalized-engraved-keychain', 'CUS-001', 'Custom name or initials, laser engraved.', 'A solid brass or leather keychain laser-engraved with your choice of name, initials or a short message. Ships in 3-5 days.', 550.00, NULL, 200, 1, 1);
+-- Starter admin login -> username: admin  password: ChangeMe123!  The setup wizard makes you choose a new password on first sign-in.
+INSERT INTO admins (username, name, password_hash, role, must_change_password) VALUES
+('admin', 'admin', '$2b$10$t65uPHFANoBh6cQGF5pB9Ow1R6T2bR2JaMqJsWE1TNgjilZdgl5Wq', 'owner', 1);
 
 INSERT INTO settings (setting_key, setting_value) VALUES
 ('theme_primary', '#a97c34'),
@@ -710,4 +692,5 @@ INSERT INTO settings (setting_key, setting_value) VALUES
 ('topbar_enabled', '0'),
 ('topbar_text', ''),
 ('topbar_link', ''),
-('schema_version', '12');
+('schema_version', '12'),
+('setup_done', '0');

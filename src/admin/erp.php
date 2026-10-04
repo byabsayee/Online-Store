@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash_set($ok ? 'success' : 'error', $msg); $go();
         case 'invoice_source':
             $v = (string) ($_POST['source'] ?? '');
-            if (!in_array($v, ['kafeel', 'book'], true)) { flash_set('error', 'Choose one of the two invoice options.'); $go(); }
+            if (!in_array($v, ['store', 'book'], true)) { flash_set('error', 'Choose one of the two invoice options.'); $go(); }
             set_setting('invoice_source', $v);
             admin_log('erp.invoice_source', 'Customer invoices now come from ' . ($v === 'book' ? 'Byabsayee' : 'this store'));
             flash_set('success', $v === 'book' ? 'Customers now see the invoice Byabsayee generates.' : 'Customers now see this store\'s own invoice.'); $go();
@@ -169,8 +169,8 @@ $tabs = ['overview' => 'Overview', 'setup' => 'Setup review', 'queue' => 'Sync q
         <input type="radio" name="source" value="book" <?= $__eff === 'book' ? 'checked' : '' ?> <?= $__linked ? '' : 'disabled' ?>>
         <span><strong>Byabsayee invoice</strong> <span class="muted">(recommended when connected)</span><br><span class="muted small">The invoice your accounting book generates. Invoice ID looks like <span class="mono">INV-000123</span>. If one isn't available yet, the store invoice is shown instead.<?= $__linked ? '' : ' Needs the Byabsayee link below.' ?></span></span></label>
       <label style="display:flex;gap:10px;align-items:flex-start;margin:10px 0;cursor:pointer;">
-        <input type="radio" name="source" value="kafeel" <?= $__eff === 'kafeel' ? 'checked' : '' ?>>
-        <span><strong>Store invoice</strong> <span class="muted">(independent)</span><br><span class="muted small">The invoice this website creates by itself. Invoice ID is the order number, like <span class="mono">RA-260928-AB12C</span>. Works with or without Byabsayee.</span></span></label>
+        <input type="radio" name="source" value="store" <?= $__eff === 'store' ? 'checked' : '' ?>>
+        <span><strong>Store invoice</strong> <span class="muted">(independent)</span><br><span class="muted small">The invoice this website creates by itself. Invoice ID is the order number, like <span class="mono">ORD-260928-AB12C</span>. Works with or without Byabsayee.</span></span></label>
       <button class="btn btn-primary btn-sm">Save choice</button>
       <?php if ($__pref === '' && $__linked): ?><span class="muted small" style="margin-left:8px;">Not chosen yet — the Byabsayee invoice is used by default while linked.</span><?php endif; ?>
     </form>

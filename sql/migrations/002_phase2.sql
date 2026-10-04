@@ -5,7 +5,7 @@
 --   - suburbs shipping zone
 --   - email verification
 --   - site settings (theme colors, seasonal effects)
--- Run this against an EXISTING Kafeel database. Fresh installs get
+-- Run this against an EXISTING store database. Fresh installs get
 -- all of this automatically via the updated sql/schema.sql.
 -- ============================================================
 

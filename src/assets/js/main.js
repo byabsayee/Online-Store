@@ -239,7 +239,7 @@
   function setTheme(t, remember) {
     root.classList.add('theme-fade');
     root.setAttribute('data-theme', t);
-    if (remember) { try { localStorage.setItem('kafeel-theme', t); } catch (e) {} }
+    if (remember) { try { localStorage.setItem('store-theme', t); } catch (e) {} }
     syncThemeBtn();
     setTimeout(function () { root.classList.remove('theme-fade'); }, 350);
   }
@@ -252,7 +252,7 @@
     var mq = window.matchMedia('(prefers-color-scheme: dark)');
     var follow = function (e) {
       var stored = null;
-      try { stored = localStorage.getItem('kafeel-theme'); } catch (err) {}
+      try { stored = localStorage.getItem('store-theme'); } catch (err) {}
       if (stored !== 'light' && stored !== 'dark') setTheme(e.matches ? 'dark' : 'light', false);
     };
     if (mq.addEventListener) mq.addEventListener('change', follow); else if (mq.addListener) mq.addListener(follow);

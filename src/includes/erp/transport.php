@@ -117,7 +117,7 @@ function erp_http_book(string $method, string $path, ?array $json = null, array 
     $body = $json === null ? '' : erp_json($json);
     $ts = (string) time();
     $nonce = bin2hex(random_bytes(16));
-    $headers = ['Accept: application/json', 'User-Agent: KafeelERP/' . ERP_MODULE_VERSION, 'X-Connection-Id: ' . ($opts['connection_id'] ?? erp_connection_id())];
+    $headers = ['Accept: application/json', 'User-Agent: StoreERP/' . ERP_MODULE_VERSION, 'X-Connection-Id: ' . ($opts['connection_id'] ?? erp_connection_id())];
     if ($json !== null) $headers[] = 'Content-Type: application/json';
     if (!empty($opts['batch_id'])) $headers[] = 'X-Event-Batch-Id: ' . $opts['batch_id'];
     if (empty($opts['unsigned'])) {

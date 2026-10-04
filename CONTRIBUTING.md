@@ -1,4 +1,4 @@
-# Contributing to Kafeel
+# Contributing to Online Store
 
 Thanks for considering a contribution — bug reports, fixes, features, and
 docs improvements are all welcome.
@@ -15,12 +15,12 @@ docs improvements are all welcome.
 
 ## Development setup
 
-Kafeel runs as a small Docker stack: nginx + PHP 8.3-FPM in one container
+Online Store runs as a small Docker stack: nginx + PHP 8.3-FPM in one container
 (via supervisord), MariaDB, and phpMyAdmin.
 
 ```bash
-git clone https://github.com/TechZeeLand/Kafeel.git
-cd Kafeel
+git clone https://github.com/<your-account>/online-store.git
+cd online-store
 cp .env.example .env          # adjust DB credentials, site name, etc.
 mkdir -p uploads/products
 
@@ -83,7 +83,7 @@ PR, but catching it locally first saves a round trip.)
 Please don't open a public issue for a security vulnerability (e.g. an
 auth bypass, SQL injection, or file-upload exploit). Instead, reach out to
 the maintainer directly — see the contact info on the
-[TechZeeLand GitHub profile](https://github.com/TechZeeLand) — so it can
+repository's maintainers (see the repository page) — so it can
 be fixed before it's public.
 
 ## License

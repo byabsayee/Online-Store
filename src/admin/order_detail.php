@@ -188,7 +188,7 @@ require __DIR__ . '/includes/header.php';
     <h2>Order items</h2>
     <span style="display:flex;gap:8px;flex-wrap:wrap;">
       <a href="/admin/invoice.php?id=<?= (int)$order['id'] ?>" target="_blank" class="btn btn-outline btn-sm" title="Exactly what customers see"><?= ui_icon('file', 15) ?> View invoice<?= invoice_source() === 'book' && order_book_invoice_no($order) ? ' (' . e(order_book_invoice_no($order)) . ')' : '' ?></a>
-      <?php if (invoice_source() === 'book'): ?><a href="/admin/invoice.php?id=<?= (int)$order['id'] ?>&amp;src=kafeel" target="_blank" class="btn btn-outline btn-sm">Store invoice</a><?php endif; ?>
+      <?php if (invoice_source() === 'book'): ?><a href="/admin/invoice.php?id=<?= (int)$order['id'] ?>&amp;src=store" target="_blank" class="btn btn-outline btn-sm">Store invoice</a><?php endif; ?>
       <?php if ($__bookUrl = order_book_invoice_admin_url($order)): ?><a href="<?= e($__bookUrl) ?>" target="_blank" rel="noopener" class="btn btn-outline btn-sm">Open in Byabsayee ↗</a><?php endif; ?>
     </span>
   </div>
@@ -226,7 +226,7 @@ require __DIR__ . '/includes/header.php';
         <?= e($order['billing_line1']) ?>, <?= e($order['billing_city']) ?><?= $order['billing_state'] ? ', ' . e($order['billing_state']) : '' ?><?= $order['billing_zip'] ? ' ' . e($order['billing_zip']) : '' ?></p>
       <?php endif; ?>
       <?php if ($order['notes']): ?><p><strong>Notes:</strong> <?= e($order['notes']) ?></p><?php endif; ?>
-      <p style="color:var(--ink-faint);font-size:0.85rem;">Payment method: <?= e(payment_method_label($order['payment_method'])) ?></p>
+      <p style="color:var(--ink-faint);font-size:0.85rem;">Payment method: <?= e(order_payment_name($order)) ?><?php if (order_payment_proof($order) !== ''): ?> — <strong><?= e(order_payment_proof($order)) ?></strong> <span class="muted">(check it, then record the payment below)</span><?php endif; ?></p>
       <?php if ($customer): ?><p style="color:var(--ink-faint);font-size:0.85rem;">Account: <?= e($customer['name']) ?> (<?= e($customer['email']) ?>)</p>
       <?php else: ?><p style="color:var(--ink-faint);font-size:0.85rem;">Guest checkout</p><?php endif; ?>
 

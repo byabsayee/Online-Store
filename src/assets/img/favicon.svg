@@ -1,4 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <circle cx="32" cy="32" r="32" fill="#20293b"/>
-  <text x="32" y="45" text-anchor="middle" font-family="Noto Naskh Arabic, Geeza Pro, Arial, sans-serif" font-weight="700" font-size="38" fill="#e9d5a8">ك</text>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="32" fill="#20293b"/><rect x="19" y="26" width="26" height="22" rx="2.5" fill="#e9d5a8"/><path d="M24 30v-5a8 8 0 0 1 16 0v5" fill="none" stroke="#e9d5a8" stroke-width="3"/></svg>

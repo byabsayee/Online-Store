@@ -27,7 +27,7 @@ require __DIR__ . '/includes/header.php';
     <h2>Thank you — your order is confirmed</h2>
     <p>Order <strong class="mono"><?= e($order['order_number']) ?></strong> has been placed and is being prepared.
     <?php if ($order['payment_method'] === 'cod'): ?>Pay by cash when it arrives.<?php else: ?>We'll be in touch about your online payment shortly.<?php endif; ?>
-    Expect delivery in <?= (int)DELIVERY_DAYS_MIN ?>–<?= (int)DELIVERY_DAYS_MAX ?> days.</p>
+    Expect delivery in <?= e(implode('–', delivery_days_range())) ?> days.</p>
   </div>
 
   <div class="form-card" style="text-align:left;">

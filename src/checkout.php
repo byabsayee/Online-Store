@@ -65,7 +65,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     foreach ($pmRows as $pm) if ((string) $pm['id'] === (string) ($_POST['payment_method'] ?? '')) $pmChosen = $pm;
     $pmChosen = $pmChosen ?: $pmRows[0];
     $payment = $pmChosen['kind'] === 'cod' ? 'cod' : 'bank_transfer';
-    $deliveryArea = in_array($_POST['delivery_area'] ?? '', ['inside_dhaka', 'suburbs', 'outside_dhaka'], true) ? $_POST['delivery_area'] : 'inside_dhaka';
+    $paySender = mb_substr(trim($_POST['pay_sender'] ?? ''), 0, 40);
+    $payTxn = mb_substr(trim($_POST['pay_txn'] ?? ''), 0, 60);
+    if ($pmChosen['kind'] !== 'cod' && !empty($pmChosen['ask_txn'])) {
+        if ($paySender === '' || !preg_match('/^[0-9+()\s.-]{5,40}$/', $paySender)) $errors[] = 'Enter the number you sent the payment from (' . $pmChosen['name'] . ').';
+        if ($payTxn === '' || !preg_match('/^[A-Za-z0-9._-]{4,60}$/', $payTxn)) $errors[] = 'Enter the transaction ID of your ' . $pmChosen['name'] . ' payment (letters and digits only).';
+    }
+    if ($pmChosen['kind'] === 'cod' || empty($pmChosen['ask_txn'])) { $paySender = ''; $payTxn = ''; }
+    $deliveryArea = isset(delivery_zones()[$_POST['delivery_area'] ?? '']) ? $_POST['delivery_area'] : 'inside_dhaka';
     $saveAddress = !empty($_POST['save_address']);
 
     if ($name === '' || strlen($name) < 2) $errors[] = 'Please enter the recipient\'s full name.';
@@ -112,18 +119,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             [$orderTax, $taxAdded] = tax_for(round((float) $freshTotals['subtotal'] - $discount, 2), $taxCfg);
             $orderTotal = round((float) $freshTotals['subtotal'] - $discount + $taxAdded + $shippingFee, 2);
             $custSyncId = erp_customer_touch($name, $email ?: ($__user['email'] ?? null), $phone, ['line1' => $line1, 'city' => $city, 'state' => $state ?: null, 'zip' => $zip ?: null], $__user['id'] ?? null);
-            $orderNumber = 'RA-' . date('ymd') . '-' . strtoupper(substr(bin2hex(random_bytes(3)), 0, 5));
+            $orderNumber = order_prefix() . '-' . date('ymd') . '-' . strtoupper(substr(bin2hex(random_bytes(3)), 0, 5));
             $ins = $pdo->prepare(
                 'INSERT INTO orders (order_number, user_id, status, payment_method, payment_method_id, delivery_area, subtotal, discount, tax, tax_inclusive, coupon_id, coupon_code, shipping_fee, total,
                  shipping_name, shipping_phone, customer_email, shipping_line1, shipping_city, shipping_state, shipping_zip,
-                 billing_same_as_shipping, billing_name, billing_phone, billing_line1, billing_city, billing_state, billing_zip, notes, customer_sync_id)
-                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+                 billing_same_as_shipping, billing_name, billing_phone, billing_line1, billing_city, billing_state, billing_zip, notes, customer_sync_id, pay_sender, pay_txn)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
             );
             $ins->execute([
                 $orderNumber, $__user['id'] ?? null, 'pending', $payment, (int) $pmChosen['id'] ?: null, $deliveryArea,
                 $freshTotals['subtotal'], $discount, $orderTax, $taxCfg['inclusive'] ? 1 : 0, $coupon['id'] ?? null, $coupon['code'] ?? null, $shippingFee, $orderTotal,
                 $name, $phone, ($email ?: ($__user['email'] ?? null)) ?: null, $line1, $city, $state ?: null, $zip ?: null,
-                $billingSame ? 1 : 0, $billName, $billPhone, $billLine1, $billCity, $billState ?: null, $billZip ?: null, $notes ?: null, $custSyncId,
+                $billingSame ? 1 : 0, $billName, $billPhone, $billLine1, $billCity, $billState ?: null, $billZip ?: null, $notes ?: null, $custSyncId, $paySender ?: null, $payTxn ?: null,
             ]);
             $orderId = (int) $pdo->lastInsertId();
 
@@ -186,6 +193,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Email after the shopper has been sent on to the confirmation page (see defer_job), so a slow
             // mail server never delays them.
             require_once __DIR__ . '/includes/order_mail.php';
+            defer_job(fn () => notify_new_order($placedOrderId));
             defer_job(fn () => send_order_confirmation_synced($placedOrderId)); // waits a few seconds for the book's invoice number when that invoice is shown
             redirect('/order-success');
         }
@@ -269,19 +277,14 @@ require __DIR__ . '/includes/header.php';
 
       <div class="field">
         <label>Delivery area</label>
+        <?php $__zsel = $_POST['delivery_area'] ?? 'inside_dhaka'; if (!isset(delivery_zones()[$__zsel])) $__zsel = 'inside_dhaka'; ?>
+        <?php foreach (delivery_zones() as $__zc => $__zl): $__zfee = shipping_fee_for_area($__zc, $totals['weight_grams']); ?>
         <label class="radio-option">
-          <input type="radio" name="delivery_area" value="inside_dhaka" id="da_inside" data-fee="<?= e((string)$shippingInside) ?>" <?= ($_POST['delivery_area'] ?? 'inside_dhaka') === 'inside_dhaka' ? 'checked' : '' ?>>
-          <span class="radio-option-label">Inside Dhaka — <?= money($shippingInside) ?></span>
+          <input type="radio" name="delivery_area" value="<?= e($__zc) ?>" data-fee="<?= e((string) $__zfee) ?>" <?= $__zsel === $__zc ? 'checked' : '' ?>>
+          <span class="radio-option-label"><?= e($__zl) ?> — <?= money($__zfee) ?></span>
         </label>
-        <label class="radio-option">
-          <input type="radio" name="delivery_area" value="suburbs" id="da_suburbs" data-fee="<?= e((string)$shippingSuburbs) ?>" <?= ($_POST['delivery_area'] ?? '') === 'suburbs' ? 'checked' : '' ?>>
-          <span class="radio-option-label">Dhaka Suburbs — <?= money($shippingSuburbs) ?></span>
-        </label>
-        <label class="radio-option">
-          <input type="radio" name="delivery_area" value="outside_dhaka" id="da_outside" data-fee="<?= e((string)$shippingOutside) ?>" <?= ($_POST['delivery_area'] ?? '') === 'outside_dhaka' ? 'checked' : '' ?>>
-          <span class="radio-option-label">Outside Dhaka — <?= money($shippingOutside) ?></span>
-        </label>
-        <div class="hint">+<?= money(shipcfg('extra_kg')) ?> added per additional kg once your parcel passes <?= (int)shipcfg('free_kg') ?>kg.</div>
+        <?php endforeach; ?>
+        <?php if (shipcfg('extra_kg') > 0): ?><div class="hint">+<?= money(shipcfg('extra_kg')) ?> added per additional kg once your parcel passes <?= e(rtrim(rtrim(number_format(shipcfg('free_kg'), 2, '.', ''), '0'), '.')) ?>kg.</div><?php endif; ?>
       </div>
 
       <?php if ($__user): ?>
@@ -354,13 +357,22 @@ require __DIR__ . '/includes/header.php';
       <div class="field">
         <label>Payment method</label>
         <?php $pmList = checkout_payment_methods(); $pmSel = (string) ($_POST['payment_method'] ?? $pmList[0]['id']); ?>
-        <?php foreach ($pmList as $pm): ?>
+        <?php foreach ($pmList as $pm): $__manual = $pm['kind'] !== 'cod'; ?>
           <label class="radio-option">
-            <input type="radio" name="payment_method" value="<?= (int) $pm['id'] ?>" <?= $pmSel === (string) $pm['id'] ? 'checked' : '' ?>>
-            <span class="radio-option-label"><?= e($pm['name']) ?><?= $pm['kind'] === 'cod' ? ' — pay when your order arrives' : '' ?>
+            <input type="radio" name="payment_method" value="<?= (int) $pm['id'] ?>" data-ask="<?= $__manual && !empty($pm['ask_txn']) ? '1' : '0' ?>" <?= $pmSel === (string) $pm['id'] ? 'checked' : '' ?>>
+            <span class="radio-option-label"><?php if (!empty($pm['logo_url'])): ?><img src="<?= e($pm['logo_url']) ?>" alt="" style="height:20px;vertical-align:middle;margin-right:6px;"><?php endif; ?><?= e($pm['name']) ?><?= $pm['kind'] === 'cod' ? ' — pay when your order arrives' : '' ?>
+              <?php if (!empty($pm['account_details'])): ?><span class="hint" style="display:block;font-weight:600;">Send to: <?= e($pm['account_details']) ?></span><?php endif; ?>
               <?php if (!empty($pm['instructions'])): ?><span class="hint" style="display:block;font-weight:400;white-space:pre-line;"><?= e($pm['instructions']) ?></span><?php endif; ?></span>
           </label>
         <?php endforeach; ?>
+        <div id="payProof" class="pay-proof" hidden>
+          <div class="field-row">
+            <div class="field"><label for="pay_sender">Number you sent from</label><input id="pay_sender" name="pay_sender" inputmode="tel" maxlength="40" value="<?= e($_POST['pay_sender'] ?? '') ?>"></div>
+            <div class="field"><label for="pay_txn">Transaction ID</label><input id="pay_txn" name="pay_txn" maxlength="60" autocapitalize="characters" value="<?= e($_POST['pay_txn'] ?? '') ?>"></div>
+          </div>
+          <div class="hint">We check this against your payment before shipping.</div>
+        </div>
+        <script>(function(){var box=document.getElementById('payProof');function sync(){var c=document.querySelector('input[name="payment_method"]:checked');var on=c&&c.dataset.ask==='1';box.hidden=!on;box.querySelectorAll('input').forEach(function(i){i.required=!!on;});}document.querySelectorAll('input[name="payment_method"]').forEach(function(r){r.addEventListener('change',sync);});sync();})();</script>
       </div>
 
       <?php /* "Save this address" checkbox moved up under the shipping section, closer to what it saves. */ ?>
@@ -411,7 +423,7 @@ require __DIR__ . '/includes/header.php';
   var discount = <?= (float) $discount ?>;
   var taxCfg = <?= json_encode(['on' => tax_settings()['enabled'], 'rate' => tax_settings()['rate'], 'inclusive' => tax_settings()['inclusive']]) ?>;
   var taxEl = document.getElementById('summaryTax');
-  var symbol = <?= json_encode(store_currency_symbol()) ?>;
+  var symbol = <?= json_encode(store_currency_symbol()) ?>, cpos = <?= json_encode(currency_position()) ?>, cdec = <?= (int) currency_decimals() ?>;
   var radios = document.querySelectorAll('input[name="delivery_area"]');
   var shippingEl = document.getElementById('summaryShipping');
   var totalEl = document.getElementById('summaryTotal');
@@ -422,7 +434,7 @@ require __DIR__ . '/includes/header.php';
   var discCode = document.getElementById('summaryCouponCode');
 
   function fmt(n) {
-    return symbol + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    var t = n.toFixed(cdec).replace(/\B(?=(\d{3})+(?!\d))/g, ','); return cpos === 'after' ? t + ' ' + symbol : symbol + t;
   }
 
   // Display only — the server recomputes the discount and total when the order is placed.

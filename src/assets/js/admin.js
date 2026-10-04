@@ -98,8 +98,8 @@
      Variant editor: Colors + Sizes + per-combination stock
      ======================================================================== */
   var mount = document.getElementById('variantEditor');
-  if (!mount || !window.KAFEEL_VARIANT_EDITOR) return;
-  var init = window.KAFEEL_VARIANT_EDITOR;
+  if (!mount || !window.STORE_VARIANT_EDITOR) return;
+  var init = window.STORE_VARIANT_EDITOR;
   var stockInput = document.getElementById('stock'), stockHint = document.getElementById('stockHint');
   var uid = 0, nextRid = function () { return 'r' + (++uid); };
 
@@ -198,7 +198,7 @@
       setStockMode(false, 0); return;
     }
     var table = el('table', { 'class': 'combo-table' });
-    table.appendChild(el('thead', {}, [el('tr', {}, ['Combination', 'SKU', 'Price ± (' + (window.KAFEEL_CURRENCY || '') + ')', 'Stock', 'On sale'].map(function (h) { return el('th', { text: h }); }))]));
+    table.appendChild(el('thead', {}, [el('tr', {}, ['Combination', 'SKU', 'Price ± (' + (window.STORE_CURRENCY || '') + ')', 'Stock', 'On sale'].map(function (h) { return el('th', { text: h }); }))]));
     var tbody = el('tbody'); var n = 0;
     (cs.length ? cs : [null]).forEach(function (c) {
       (ss.length ? ss : [null]).forEach(function (s) {

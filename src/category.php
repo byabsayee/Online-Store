@@ -95,6 +95,7 @@ require __DIR__ . '/includes/header.php';
   </div>
 
   <?php if ($products): ?>
+    <?= ad_slot('category_top') ?>
     <div class="product-grid">
       <?php foreach ($products as $p): include __DIR__ . '/includes/product_card.php'; endforeach; ?>
     </div>

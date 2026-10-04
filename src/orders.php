@@ -37,7 +37,7 @@ if (!is_logged_in()) {
         <?php if ($error): ?><div class="alert alert-error"><?= e($error) ?></div><?php endif; ?>
         <form method="post">
           <?= csrf_field() ?>
-          <div class="field"><label for="order_number">Order number or invoice ID</label><input id="order_number" name="order_number" required placeholder="RA-260928-AB12C" autocapitalize="characters" value="<?= e($_POST['order_number'] ?? '') ?>"></div>
+          <div class="field"><label for="order_number">Order number or invoice ID</label><input id="order_number" name="order_number" required placeholder="ORD-260928-AB12C" autocapitalize="characters" value="<?= e($_POST['order_number'] ?? '') ?>"></div>
           <div class="field"><label for="email">Email</label><input type="email" id="email" name="email" required autocomplete="email" value="<?= e($_POST['email'] ?? '') ?>"></div>
           <button type="submit" class="btn btn-primary btn-block">Track order</button>
         </form>

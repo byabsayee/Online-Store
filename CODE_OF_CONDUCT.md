@@ -53,7 +53,7 @@ representing the community in public spaces.
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
 reported to the maintainer via the contact info on the
-[TechZeeLand GitHub profile](https://github.com/TechZeeLand). All
+repository's maintainers (see the repository page). All
 complaints will be reviewed and investigated promptly and fairly.
 
 ## Attribution
