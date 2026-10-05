@@ -46,6 +46,8 @@ function maintenance_render(array $m, bool $preview = false): void {
     $name = store_name();
     $signal = '';
     try { $socials = store_socials(); $signal = $socials['signal']['url'] ?? ''; } catch (Throwable $e) { /* optional */ }
+    $wa = '';
+try { $socials = store_socials(); $wa = $socials['whatsapp']['url'] ?? ''; } catch (Throwable $e) { /* optional */ }
     ?><!DOCTYPE html>
 <html lang="en">
 <head>
@@ -84,7 +86,9 @@ p { margin: 0 0 16px; color: var(--ink-soft); font-size: 1.02rem; white-space: p
   <h1><?= e($m['title']) ?></h1>
   <p><?= e($m['message']) ?></p>
   <?php if ($m['eta'] !== ''): ?><div class="eta"><?= e($m['eta']) ?></div><?php endif; ?>
-  <?php if ($signal !== ''): ?><div class="contact">Need something urgent? <a href="<?= e($signal) ?>" rel="noopener">Message us on Signal</a></div><?php endif; ?>
+  <?php if ($signal !== ''): ?><div class="contact">Need something urgent? <a href="<?= e($signal) ?>" rel="noopener">Message us on Signal</a></div>
+    <?php elseif ($wa !== ''): ?><div class="contact">Need something urgent? <a href="<?= e($wa) ?>" rel="noopener">Message us on WhatsApp</a></div>
+    <?php endif; ?>
 </main>
 </body>
 </html>
