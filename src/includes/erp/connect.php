@@ -19,6 +19,24 @@ function erp_site_public_error(): ?string {
 }
 
 /**
+ * Reads the single connection code the book shows (BYB1-<base64url JSON with the book address and a one-time secret>).
+ * Also accepts the old pair typed as "https://book.example.com  ABCD-EFGH-JKMN" so nobody is locked out.
+ * @return array{0:?string,1:?string,2:string} [bookUrl, pairingCode, errorMessage]
+ */
+function erp_parse_connection_code(string $raw): array {
+    $raw = trim($raw);
+    if ($raw === '') return [null, null, 'Paste the connection code from Byabsayee.'];
+    if (preg_match('/BYB1-([A-Za-z0-9_\-]+)/', preg_replace('/\s+/', '', $raw), $m)) {
+        $json = base64_decode(strtr($m[1], '-_', '+/') . str_repeat('=', (4 - strlen($m[1]) % 4) % 4), true);
+        $j = $json !== false ? json_decode($json, true) : null;
+        if (is_array($j) && !empty($j['u']) && !empty($j['c'])) return [(string) $j['u'], (string) $j['c'], ''];
+        return [null, null, 'That connection code is damaged. Copy it again from Byabsayee (nothing was changed).'];
+    }
+    if (preg_match('#(https?://[^\s]+)\s+([A-Za-z0-9]{4}-?[A-Za-z0-9]{4}-?[A-Za-z0-9]{4})#', $raw, $m)) return [$m[1], $m[2], ''];
+    return [null, null, 'That does not look like a connection code. In Byabsayee open the book, then Online store, then press Connect a website, and copy the code it shows.'];
+}
+
+/**
  * Starts pairing. Either a pairing code (the book returns the credentials), or manual credentials
  * ['connection_id', 'api_key', 'secret_site_to_book', 'secret_book_to_site'].
  * @return array{0:bool,1:string}
@@ -194,7 +212,10 @@ function erp_initial_scan(): array {
         for ($page = 0; $page < 200; $page++) {
             $res = erp_http_book('GET', 'snapshot/' . $entity . '?limit=200' . ($cursor !== '' ? '&cursor=' . rawurlencode($cursor) : ''));
             if (!$res['ok'] || !is_array($res['json']['items'] ?? null)) return [false, 'Could not read the book\'s ' . $entity . ' list: ' . ($res['error'] ?: 'unexpected answer')];
-            foreach ($res['json']['items'] as $it) if (!empty($it['entity_uuid']) && is_array($it['fields'] ?? null) && empty($it['archived'])) $remote[$entity][] = $it;
+            foreach ($res['json']['items'] as $it) if (!empty($it['entity_uuid']) && is_array($it['fields'] ?? null) && empty($it['archived'])) {
+                if ($entity === 'product' && isset($it['stock']['product']) && is_numeric($it['stock']['product'])) $it['fields']['_stock'] = (int) $it['stock']['product']; // so a product created from the book keeps its quantity
+                $remote[$entity][] = $it;
+            }
             if (empty($res['json']['has_more'])) break;
             $cursor = (string) ($res['json']['cursor'] ?? '');
             if ($cursor === '') break;
@@ -252,9 +273,12 @@ function erp_match_resolve(int $itemId, string $action): string {
     }
     if ($it['kind'] === 'remote_only' && $action === 'create') {
         $f = $remote;
+        $opening = null;
+        if (array_key_exists('_stock', $f)) { $opening = (int) $f['_stock']; unset($f['_stock']); }
         if (!empty($f['category_uuid']) && !erp_local_for('category', $f['category_uuid'])) $f['category_uuid'] = null; // its category was left out
+        $payload = $opening !== null && $opening > 0 ? ['opening_stock' => ['product' => $opening, 'variants' => (object) []]] : [];
         try {
-            $id = erp_applying(fn () => $cls::apply('create', null, $f, ['uuid' => $it['remote_uuid'], 'event' => ['payload' => []], 'force_new' => true]));
+            $id = erp_applying(fn () => $cls::apply('create', null, $f, ['uuid' => $it['remote_uuid'], 'event' => ['payload' => $payload], 'force_new' => true]));
         } catch (ErpReject | ErpConflictResult $e) { return 'Could not create it here: ' . $e->getMessage(); }
         erp_link_create($entity, $id, $it['remote_uuid']);
         $l = erp_link_get($entity, $it['remote_uuid']);

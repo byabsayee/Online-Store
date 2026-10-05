@@ -17,6 +17,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $go = fn (string $t = 'overview') => redirect($self . '?tab=' . $t);
     switch ($act) {
         case 'connect':
+            if (trim((string) ($_POST['connection_code'] ?? '')) !== '') {   // the simple path: one pasted code carries the book address and the one-time secret
+                [$__u, $__c, $__e] = erp_parse_connection_code((string) $_POST['connection_code']);
+                if ($__e !== '') { flash_set('error', $__e); $go(); }
+                [$ok, $msg] = erp_connect($__u, $__c);
+                if ($ok) admin_log('erp.connect', 'Started linking the store to the accounting book at ' . (erp_conn(true)['book_base_url'] ?? ''));
+                flash_set($ok ? 'success' : 'error', $ok ? 'Code accepted. Connecting — this page shows Connected in a few seconds.' : $msg); $go();
+            }
             [$ok, $msg] = erp_connect(trim($_POST['book_url'] ?? ''), trim($_POST['pairing_code'] ?? ''), [
                 'connection_id' => $_POST['connection_id'] ?? '', 'api_key' => $_POST['api_key'] ?? '',
                 'secret_site_to_book' => $_POST['secret_site_to_book'] ?? '', 'secret_book_to_site' => $_POST['secret_book_to_site'] ?? '']);
@@ -86,9 +93,13 @@ $pageTitle = 'Accounting link';
 require __DIR__ . '/includes/header.php';
 $tabs = ['overview' => 'Overview', 'setup' => 'Setup review', 'queue' => 'Sync queue' . ($q['dead'] ? ' (' . $q['dead'] . ' stuck)' : ''), 'conflicts' => 'Conflicts' . ($openConf ? ' (' . $openConf . ')' : ''), 'log' => 'Activity', 'import' => 'History import'];
 ?>
+<?php if ($tab === 'overview'): ?>
+  <p style="margin:0 0 14px;text-align:right;"><a href="<?= $self ?>?tab=log" class="help">Advanced</a></p>
+<?php else: ?>
 <div class="seg" role="tablist" style="margin-bottom:18px;display:inline-flex;">
   <?php foreach ($tabs as $k => $label): ?><a href="<?= $self ?>?tab=<?= $k ?>" class="<?= $tab === $k ? 'active' : '' ?>"><?= e($label) ?></a><?php endforeach; ?>
 </div>
+<?php endif; ?>
 
 <?php if ($tab === 'overview'): ?>
 <section class="panel">
@@ -102,24 +113,32 @@ $tabs = ['overview' => 'Overview', 'setup' => 'Setup review', 'queue' => 'Sync q
         <p>Link this store to your Byabsayee accounting book so orders, payments, stock and customers stay in step. It stays completely off until you do this, and your shop works exactly as before.</p>
       <?php endif; ?>
       <?php if ($err = erp_site_public_error()): ?><div class="alert alert-error"><?= e($err) ?></div><?php endif; ?>
-      <?php if (!$err && ($__h = (string) parse_url(site_url(), PHP_URL_HOST)) !== ''): ?>
-        <div class="alert alert-info">This store will introduce itself to Byabsayee as <strong><?= e($__h) ?></strong>. The pairing code must have been created for exactly this domain.
-          Wrong domain? Change it under <a href="/admin/settings.php">Settings &amp; email → Public site address</a> (that saved value overrides <code>SITE_URL</code> in <code>.env</code>), then come back here.</div>
-      <?php endif; ?>
       <form method="post"><?= csrf_field() ?><input type="hidden" name="action" value="connect">
-        <div class="field"><label for="book_url">Byabsayee address</label><input id="book_url" name="book_url" placeholder="https://books.example.com" value="https://web.byabsayee.com" required></div>
-        <div class="field"><label for="pairing_code">Pairing code</label><input id="pairing_code" name="pairing_code" autocomplete="off" placeholder="Generated in Byabsayee → Integrations"><div class="hint">Easiest way. Or use the manual credentials below.</div></div>
-        <details class="log-details"><summary>Enter the credentials by hand instead</summary>
+        <div class="field"><label for="connection_code">Connection code</label>
+          <textarea id="connection_code" name="connection_code" rows="3" autocomplete="off" spellcheck="false" placeholder="Paste the code from Byabsayee here" style="font-family:ui-monospace,Menlo,monospace;"></textarea>
+          <div class="hint">In Byabsayee open your book → Online store → <strong>Connect a website</strong>, then copy the code it shows. The code works once and expires in 30 minutes.</div></div>
+        <button class="btn btn-primary">Connect</button>
+        <details class="log-details" style="margin-top:16px;"><summary>Advanced: enter the details by hand</summary>
+          <div class="field" style="margin-top:12px;"><label for="book_url">Byabsayee address</label><input id="book_url" name="book_url" placeholder="https://books.example.com"></div>
+          <div class="field"><label for="pairing_code">Pairing code</label><input id="pairing_code" name="pairing_code" autocomplete="off"></div>
           <div class="field" style="margin-top:12px;"><label for="connection_id">Connection ID</label><input id="connection_id" name="connection_id" autocomplete="off"></div>
           <div class="field"><label for="api_key">API key</label><input id="api_key" name="api_key" type="password" autocomplete="off"></div>
           <div class="field-row"><div class="field"><label for="s1">Secret: store → book</label><input id="s1" name="secret_site_to_book" type="password" autocomplete="off"></div>
           <div class="field"><label for="s2">Secret: book → store</label><input id="s2" name="secret_book_to_site" type="password" autocomplete="off"></div></div></details>
-        <p class="help">The book must be on its own HTTPS domain, and so must this store. Nothing is exchanged with any server that isn't that address.</p>
-        <button class="btn btn-primary">Connect</button>
       </form>
       <?php if ($status === 'revoked'): ?><form method="post" style="margin-top:12px;"><?= csrf_field() ?><input type="hidden" name="action" value="reset"><button class="btn btn-outline btn-sm">Forget this link and start over</button></form><?php endif; ?>
     <?php else: ?>
-      <table class="admin-table" style="margin-bottom:16px;"><tbody>
+      <?php
+        if ($status === 'verifying') { $__line = 'Connecting… this finishes by itself in a few seconds.'; $__ok = null; }
+        elseif ($status === 'paused') { $__line = 'Sync is paused. Changes are kept and sent when it resumes.'; $__ok = false; }
+        elseif (!erp_setup_done()) { $__line = 'Connected. Matching your products and customers with the book…'; $__ok = null; }
+        elseif ($q['dead'] > 0) { $__line = 'Connected, but ' . (int) $q['dead'] . ' change(s) could not be delivered. They are retried automatically.'; $__ok = false; }
+        elseif ($openConf > 0) { $__line = 'Connected. ' . (int) $openConf . ' item(s) need a decision (see Conflicts under Advanced).'; $__ok = false; }
+        else { $__line = 'Connected. Products, stock, customers and orders are kept in step automatically.'; $__ok = true; }
+      ?>
+      <div class="alert <?= $__ok === true ? 'alert-success' : ($__ok === false ? 'alert-error' : 'alert-info') ?>"><strong><?= e($__line) ?></strong><?= $conn['last_sync_at'] ? ' Last change delivered: ' . e(fmt_dt($conn['last_sync_at'])) . '.' : '' ?></div>
+      <details class="log-details" style="margin-bottom:16px;"><summary>Advanced</summary>
+      <table class="admin-table" style="margin:12px 0 16px;"><tbody>
         <tr><th style="width:220px;">Book</th><td><?= e($conn['book_base_url']) ?></td></tr>
         <tr><th>Connection</th><td class="mono"><?= e($conn['connection_id']) ?></td></tr>
         <tr><th>Who decides currency, timezone, tax</th><td><?= ($conn['authority'] ?? '') === 'book' ? 'The accounting book' : (($conn['authority'] ?? '') === 'site' ? 'This website' : 'Not chosen yet') ?></td></tr>
@@ -146,6 +165,7 @@ $tabs = ['overview' => 'Overview', 'setup' => 'Setup review', 'queue' => 'Sync q
           <form method="post" onsubmit="return confirm('Get a fresh API key and secrets from the book?');"><?= csrf_field() ?><input type="hidden" name="action" value="rotate"><button class="btn btn-outline">Rotate credentials</button></form>
         <?php endif; ?>
       </div>
+      </details>
       <details class="log-details" style="margin-top:18px;"><summary>Disconnect</summary>
         <form method="post" style="margin-top:12px;"><?= csrf_field() ?><input type="hidden" name="action" value="disconnect">
           <p class="help">Stops all syncing and removes the stored keys. Nothing is deleted here or at the book. Waiting events stay queued.</p>

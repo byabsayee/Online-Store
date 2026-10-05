@@ -28,8 +28,8 @@ try {
             erp_backfill_staff(25);
             if ($stats['sent'] || $stats['failed'] || $stats['dead']) echo date('c') . " sent={$stats['sent']} failed={$stats['failed']} dead={$stats['dead']}\n";
             foreach (db()->query("SELECT id FROM sync_import_batches WHERE status = 'running' ORDER BY id")->fetchAll(PDO::FETCH_COLUMN) as $bid) erp_import_step((int) $bid, 50);
-            $last = erp_last_reconcile();
-            if (!$last || (time() - (int) strtotime($last['ran_at'])) >= 3600) erp_reconcile();
+            $h = erp_auto_heal();
+            if ($h['ran'] && ($h['pulled'] || $h['resent'] || $h['retried'] || $h['errors'])) echo date('c') . " heal: pulled={$h['pulled']} resent={$h['resent']} retried={$h['retried']}" . ($h['errors'] ? ' problems=' . count($h['errors']) : '') . "\n";
         }
         $lastPrune = (int) get_setting('erp_last_prune', '0');
         if (time() - $lastPrune > 86400) { erp_prune(); set_setting('erp_last_prune', (string) time()); }

@@ -58,7 +58,15 @@ try {
         case 'changes': erp_api_out(200, erp_changes((int) ($_GET['cursor'] ?? 0), $limit));
         case 'status': erp_api_out(200, erp_status_body());
         case 'disconnect': erp_api_out(200, erp_disconnect_inbound());
-        case 'complete': erp_api_out(200, erp_connect_complete($json));
+        case 'complete':
+            $done = erp_connect_complete($json);
+            // Once the book has its answer, match both catalogs by themselves so the link is usable immediately (the worker repeats this if anything is missed).
+            register_shutdown_function(function () {
+                if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+                try { if (erp_active() && !erp_setup_done() && get_setting('erp_auto_setup', '1') !== '0') erp_auto_setup(); }
+                catch (Throwable $e) { error_log('[erp auto-setup after connect] ' . $e->getMessage()); }
+            });
+            erp_api_out(200, $done);
         case 'rotate': erp_api_out(200, erp_rotate_inbound($json));
     }
 } catch (ErpApiError $e) {

@@ -30,14 +30,14 @@ const ERP_RECONCILE_ENTITIES = ['category', 'product', 'customer', 'payment_meth
  * of every product. Stock drift is corrected with a flagged reconciliation_adjustment movement
  * (the book's ledger is the record) — never a silent overwrite. Everything else is reported.
  */
-function erp_reconcile(): array {
+function erp_reconcile(?array $only = null): array {
     $report = ['ran_at' => erp_now_iso(), 'ok' => true, 'error' => null, 'entities' => [], 'stock' => ['checked' => 0, 'drift' => [], 'corrected' => 0, 'deferred' => false]];
     if (!erp_active() || !erp_setup_done()) { $report['ok'] = false; $report['error'] = 'The store is not active yet.'; return $report; }
     if (!erp_lock('reconcile', 0)) { $report['ok'] = false; $report['error'] = 'A reconciliation is already running.'; return $report; }
     try {
         $inflight = (int) db()->query("SELECT COUNT(*) FROM sync_outbox WHERE status IN ('pending','sending') AND entity IN ('order','payment','return','stock_movement')")->fetchColumn();
         $report['stock']['deferred'] = $inflight > 0;
-        foreach (ERP_RECONCILE_ENTITIES as $entity) {
+        foreach ($only ?? ERP_RECONCILE_ENTITIES as $entity) {
             if (!erp_scope_allows($entity)) continue;
             [$items, $err] = erp_book_snapshot($entity);
             if ($err) { $report['ok'] = false; $report['error'] = $err; break; }
@@ -118,6 +118,10 @@ function erp_pull_from_book(string $entity, array $uuids): array {
             $ts = array_fill_keys(array_keys($it['fields']), $now);
             $localId = $link && $link['local_id'] ? (int) $link['local_id'] : null;
             $fake = ['event_id' => erp_uuid4(), 'entity' => $entity, 'entity_uuid' => $u, 'version' => (int) ($it['version'] ?? 1), 'occurred_at' => $now, 'payload' => ['fields' => $it['fields'], 'field_ts' => $ts]];
+            // A product created from the book keeps the book's quantity (this used to arrive as 0). Existing products are corrected by the stock reconciliation instead.
+            if ($entity === 'product' && !$localId && isset($it['stock']['product']) && is_numeric($it['stock']['product']) && (int) $it['stock']['product'] > 0) {
+                $fake['payload']['opening_stock'] = ['product' => (int) $it['stock']['product'], 'variants' => (object) []];
+            }
             $f = $it['fields'];
             if (!empty($f['category_uuid']) && !erp_local_for('category', $f['category_uuid'])) $f['category_uuid'] = null;
             $id = erp_applying(fn () => $cls::apply($localId ? 'update' : 'create', $localId, $f, ['uuid' => $u, 'event' => $fake, 'force_new' => true]));
@@ -128,6 +132,62 @@ function erp_pull_from_book(string $entity, array $uuids): array {
         } catch (Throwable $e) { if (db()->inTransaction()) db()->rollBack(); $errors[] = $u . ': ' . $e->getMessage(); }
     }
     return [$n, $errors];
+}
+
+/* ----------------------------------------------------------- self-healing -- */
+
+const ERP_HEAL_INTERVAL = 180; // seconds between automatic catch-up passes
+
+/**
+ * Keeps the two sides in step without anyone pressing anything. Called by the worker; does nothing until the interval has passed.
+ * Every few minutes it compares both sides and then fixes what it finds, following the agreed rules:
+ *   - catalog data (categories, products, payment methods, coupons): the book wins, so missing or newer items are brought in
+ *     (a product that arrives from the book keeps the book's stock) and stock differences are corrected;
+ *   - customers: customers only the book has are brought in; ones only here are sent (newest edit wins stays with the live events);
+ *   - orders: online orders the book is missing are re-sent (the store is where they originate);
+ *   - events that gave up are tried again once an hour.
+ * Items that already have an event waiting or failed are not queued twice. @return array{ran:bool,pulled:int,resent:int,retried:int,errors:array}
+ */
+function erp_auto_heal(bool $force = false): array {
+    $out = ['ran' => false, 'pulled' => 0, 'resent' => 0, 'retried' => 0, 'errors' => []];
+    if (!erp_active() || !erp_setup_done()) return $out;
+    if (!$force && time() - (int) get_setting('erp_last_heal', '0') < ERP_HEAL_INTERVAL) return $out;
+    set_setting('erp_last_heal', (string) time());
+    $out['ran'] = true;
+
+    $fullDue = $force || time() - (int) get_setting('erp_last_heal_full', '0') >= 3600;   // orders can be many: compare them hourly, the rest every pass
+    if ($fullDue) set_setting('erp_last_heal_full', (string) time());
+    $entities = $fullDue ? ERP_RECONCILE_ENTITIES : array_values(array_diff(ERP_RECONCILE_ENTITIES, ['order']));
+    $report = erp_reconcile($entities);
+    if (!$report['ok']) { $out['errors'][] = (string) $report['error']; return $out; }
+
+    $busy = db()->prepare("SELECT 1 FROM sync_outbox WHERE entity_uuid = ? AND status IN ('pending','sending','dead') LIMIT 1");
+    $catalog = ['category', 'product', 'payment_method', 'coupon'];
+    foreach ($report['entities'] as $entity => $r) {
+        $pull = [];
+        if (in_array($entity, $catalog, true)) $pull = array_merge($r['missing_here'], $r['behind']);
+        elseif ($entity === 'customer') $pull = $r['missing_here'];
+        $pull = array_slice(array_values(array_unique($pull)), 0, 100);
+        if ($pull) {
+            [$n, $errs] = erp_pull_from_book($entity, $pull);
+            $out['pulled'] += $n;
+            foreach (array_slice($errs, 0, 3) as $e) $out['errors'][] = $entity . ': ' . $e;
+        }
+        if (in_array($entity, array_merge($catalog, ['customer', 'order']), true) && $r['missing_at_book']) {
+            $send = [];
+            foreach ($r['missing_at_book'] as $u) { $busy->execute([$u]); if (!$busy->fetchColumn()) $send[] = $u; if (count($send) >= 100) break; }
+            if ($send) $out['resent'] += erp_resend_missing($entity, $send);
+        }
+    }
+    if (time() - (int) get_setting('erp_last_dead_retry', '0') >= 3600) {
+        set_setting('erp_last_dead_retry', (string) time());
+        $out['retried'] = erp_outbox_retry_all_dead();
+    }
+    if ($out['pulled'] || $out['resent'] || $out['retried'] || $out['errors'] || $report['stock']['corrected']) {
+        erp_log('system', 'heal', 'Automatic catch-up: brought in ' . $out['pulled'] . ', re-sent ' . $out['resent'] . ', retried ' . $out['retried'] . ', corrected stock for ' . (int) $report['stock']['corrected'] . '.' . ($out['errors'] ? ' Problems: ' . implode(' | ', array_slice($out['errors'], 0, 3)) : ''), !$out['errors']);
+    }
+    if ($out['resent']) erp_flush(3);
+    return $out;
 }
 
 /* ----------------------------------------------------------- import ------ */
