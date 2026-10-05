@@ -88,9 +88,29 @@ function promo_send_batch(int $campaignId): array {
 $errors = [];
 $campId = (int) ($_GET['c'] ?? 0);
 
+$section = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_csrf();
     $action = $_POST['action'] ?? '';
+    $section = $_POST['section'] ?? '';
+
+    if ($section === 'topbar') {
+        $tb0 = topbar_settings();
+        $text = mb_substr(trim($_POST['topbar_text'] ?? ''), 0, 200);
+        $link = trim($_POST['topbar_link'] ?? '');
+        $enabled = !empty($_POST['topbar_enabled']);
+        if ($link !== '' && !preg_match('~^(https?://|/)~i', $link)) $errors[] = 'The link must start with https:// (or / for a page on your own site).';
+        if ($enabled && $text === '') $errors[] = 'Type a message first, or switch the bar off.';
+        if (!$errors) {
+            set_setting('topbar_enabled', $enabled ? '1' : '0');
+            set_setting('topbar_text', $text);
+            set_setting('topbar_link', $link);
+            admin_log('settings.announcement', $enabled ? 'Announcement bar switched on: "' . admin_log_clip($text, 100) . '"' : 'Announcement bar switched off',
+                null, null, ['changes' => admin_log_diff(['on' => $tb0['enabled'] ? 'yes' : 'no', 'text' => $tb0['text'], 'link' => $tb0['link']], ['on' => $enabled ? 'yes' : 'no', 'text' => $text, 'link' => $link], ['on' => 'Shown', 'text' => 'Message', 'link' => 'Link'])]);
+            flash_set('success', $enabled ? 'Announcement bar saved and showing on every page.' : 'Announcement bar is switched off.');
+            redirect('/admin/promotions.php#topbar');
+        }
+    }
 
     if ($action === 'send_batch') {          // called by the progress bar on this page
         header('Content-Type: application/json');
@@ -181,7 +201,8 @@ $campaigns = db()->query("SELECT c.*, (SELECT COUNT(*) FROM promo_recipients r W
 $active = null;
 foreach ($campaigns as $c) if ($c['status'] === 'sending' && ($campId === 0 || $campId === (int) $c['id'])) { $active = $c; break; }
 
-$pageTitle = 'Promotional emails';
+$tb = topbar_settings();
+$pageTitle = 'Promotions';
 require __DIR__ . '/includes/header.php';
 ?>
 
@@ -205,6 +226,29 @@ require __DIR__ . '/includes/header.php';
   </div>
 </div>
 <?php endif; ?>
+
+<!-- ───────────── Announcement bar ───────────── -->
+<form method="post" id="topbar" class="panel">
+  <?= csrf_field() ?><input type="hidden" name="section" value="topbar">
+  <div class="panel-head"><h2>Announcement bar</h2></div>
+  <div class="panel-body">
+    <p class="help">A slim bar above the header on every page — good for sales, holiday delivery notices or anything you want everyone to see. When it's off, the bar is hidden completely.</p>
+    <div class="field">
+      <label class="switch"><input type="checkbox" name="topbar_enabled" value="1" id="tbOn" <?= ($section === 'topbar' ? !empty($_POST['topbar_enabled']) : $tb['raw_enabled']) ? 'checked' : '' ?>><span class="track"></span><span>Show the announcement bar</span></label>
+    </div>
+    <div class="field">
+      <label for="tbText">Message <span class="counter" data-counter-for="tbText" data-max="200"></span></label>
+      <input type="text" id="tbText" name="topbar_text" maxlength="200" value="<?= e($section === 'topbar' ? ($_POST['topbar_text'] ?? '') : $tb['text']) ?>" placeholder="e.g. Eid sale — 15% off all leather goods this week">
+    </div>
+    <div class="field" style="margin-bottom:0;">
+      <label for="tbLink">Link <span class="muted" style="font-weight:400;">(optional)</span></label>
+      <input type="text" id="tbLink" name="topbar_link" value="<?= e($section === 'topbar' ? ($_POST['topbar_link'] ?? '') : $tb['link']) ?>" placeholder="https://… or /category.php?slug=leather">
+      <div class="hint">If set, the whole message becomes a link.</div>
+    </div>
+    <div class="preview" style="margin-top:18px;"><div class="pv-top" id="tbPreview" style="background:var(--surface-dark);color:var(--on-dark);"></div></div>
+  </div>
+  <div class="panel-foot"><button class="btn btn-primary" type="submit">Save announcement bar</button></div>
+</form>
 
 <form method="post" class="panel">
   <?= csrf_field() ?>
@@ -279,4 +323,15 @@ require __DIR__ . '/includes/header.php';
 })();
 </script>
 <?php endif; ?>
+<script>
+(function () {
+  var on = document.getElementById('tbOn'), text = document.getElementById('tbText'), prev = document.getElementById('tbPreview');
+  function paint() {
+    var t = text.value.trim();
+    prev.textContent = on.checked ? (t || 'Your message appears here') : 'The bar is off — nothing is shown above the header.';
+    prev.style.opacity = on.checked && t ? 1 : .55;
+  }
+  on.addEventListener('change', paint); text.addEventListener('input', paint); paint();
+})();
+</script>
 <?php require __DIR__ . '/includes/footer.php'; ?>

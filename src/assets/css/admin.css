@@ -383,3 +383,48 @@ mark.hit { background: color-mix(in srgb, var(--brass) 30%, transparent); color:
 .hub-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
 .hub-item{display:flex;flex-direction:column;gap:2px;padding:8px 10px;border-radius:8px}.hub-item:hover{background:var(--paper)}
 @media (max-width:860px){.settings-tabs{overflow-x:auto;flex-wrap:nowrap}.settings-tabs .grp{flex-wrap:nowrap;white-space:nowrap}}
+
+/* ------------------------------------------------ product form polish ---- */
+html { scroll-behavior: smooth; }
+.product-form { padding-bottom: 84px; }
+.form-steps { position: sticky; top: 59px; z-index: 12; display: flex; gap: 4px; overflow-x: auto; padding: 6px; margin: 0 0 16px; background: color-mix(in srgb, var(--white) 94%, transparent); backdrop-filter: blur(6px); border: 1px solid var(--line); border-radius: 999px; scrollbar-width: none; }
+.form-steps::-webkit-scrollbar { display: none; }
+.form-steps a { white-space: nowrap; padding: 6px 14px; border-radius: 999px; font-size: 0.82rem; font-weight: 600; color: var(--ink-soft); }
+.form-steps a:hover { background: var(--paper); }
+.form-steps a.is-active { background: var(--brass); color: var(--on-brass); }
+.product-form .panel[id] { scroll-margin-top: 130px; }
+.panel-head h2 .num { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; margin-right: 10px; border-radius: 50%; background: color-mix(in srgb, var(--brass) 16%, #fff); color: var(--accent-text); font-family: var(--font-mono); font-size: 0.75rem; font-weight: 700; vertical-align: 1px; }
+.opt { font-weight: 400; font-size: 0.72rem; color: var(--ink-faint); font-family: var(--font-mono); margin-left: 4px; }
+.photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.photo-grid .upload-box { margin-top: 10px; }
+.photo-grid .thumb-grid:empty { display: none; }
+details.more { margin-top: 4px; padding-top: 14px; border-top: 1px dashed var(--line); }
+details.more > summary { cursor: pointer; list-style: none; font-weight: 600; font-size: 0.86rem; color: var(--accent-text); }
+details.more > summary::-webkit-details-marker { display: none; }
+details.more > summary::before { content: '+'; display: inline-block; width: 16px; font-weight: 700; }
+details.more[open] > summary::before { content: '−'; }
+.toggle-block { border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; background: #fbfaf6; }
+.toggle-body { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--line); }
+.toggle-body[hidden] { display: none; }
+
+/* option rows: a little more room, with the price next to the name */
+.opt-row.color { grid-template-columns: 40px minmax(120px, 1fr) 132px 190px 34px; }
+.opt-row.size { grid-template-columns: minmax(120px, 1fr) 132px 190px 34px; }
+.opt-row.custom { grid-template-columns: minmax(120px, 1fr) minmax(120px, 1.2fr) 132px 190px 34px; }
+.opt-row .opt-more { grid-column: 1 / -1; padding-top: 8px; border-top: 1px dashed var(--line); }
+.opt-row .opt-more > summary { cursor: pointer; font-size: 0.78rem; font-weight: 600; color: var(--accent-text); }
+.opt-row .opt-dims { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 10px; }
+.mini-affix { display: flex; align-items: stretch; }
+.mini-affix > span { display: flex; align-items: center; padding: 0 8px; background: var(--paper); border: 1px solid var(--line); border-right: 0; border-radius: 6px 0 0 6px; color: var(--ink-faint); font-size: 0.8rem; font-family: var(--font-mono); }
+.opt-row .mini-affix input { border-radius: 0 6px 6px 0 !important; min-width: 0; }
+.opt-block .btn { margin-top: 2px; }
+@media (max-width: 760px) {
+  .photo-grid { grid-template-columns: 1fr; }
+  .opt-row.color, .opt-row.size, .opt-row.custom { grid-template-columns: 1fr 1fr; }
+  .opt-row .img-pick { grid-column: 1 / -1; }
+  .opt-row .opt-dims { grid-template-columns: 1fr 1fr; }
+  .field-row.cols-3, .field-row.cols-4 { grid-template-columns: 1fr 1fr; }
+  .form-steps { top: 52px; }
+  .savebar { left: 0; }
+}
+@media (max-width: 520px) { .field-row, .field-row.cols-3, .field-row.cols-4 { grid-template-columns: 1fr; } }

@@ -140,7 +140,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $productStockStmt = $pdo->prepare('UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ?');
             $variantStockStmt = $pdo->prepare('UPDATE product_variants SET stock = stock - ? WHERE id = ? AND stock >= ?');
             foreach ($freshTotals['items'] as $it) {
-                $itemStmt->execute([$orderId, $it['product_id'], $it['variant_id'], $it['variant_label'], $it['name'], $it['price'], $it['quantity'], $it['price'] * $it['quantity'], $it['warranty_days'] ?? null, $it['is_preorder'] ? 1 : 0]);
+                $itemStmt->execute([$orderId, $it['product_id'], $it['variant_id'], $it['variant_label'] !== null ? mb_substr($it['variant_label'], 0, 150) : null, $it['name'], $it['price'], $it['quantity'], $it['price'] * $it['quantity'], $it['warranty_days'] ?? null, $it['is_preorder'] ? 1 : 0]);
                 // Pre-order lines have no stock to deduct yet — skip straight past the
                 // conditional UPDATE below, which would otherwise always fail on stock >= ? here.
                 if ($it['is_preorder']) continue;

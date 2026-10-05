@@ -17,6 +17,7 @@ function upload_in_use(string $path): bool {
         'SELECT 1 FROM products WHERE image_main = ? LIMIT 1',
         'SELECT 1 FROM product_images WHERE image_path = ? LIMIT 1',
         'SELECT 1 FROM product_options WHERE image = ? LIMIT 1',
+        'SELECT 1 FROM product_customizations WHERE image = ? LIMIT 1',
         'SELECT 1 FROM categories WHERE image = ? LIMIT 1',
     ];
     foreach ($checks as $sql) {
@@ -54,7 +55,8 @@ function int_or_null($v): ?int {
  * any newly chosen photos). Returns ['colors' => [...], 'sizes' => [...]].
  */
 function parse_option_posts(array &$errors): array {
-    $out = ['colors' => [], 'sizes' => []];
+    $out = ['colors' => [], 'sizes' => [], 'customs' => []];
+    $money = fn ($v) => max(-999999.99, min(999999.99, round((float) $v, 2)));
 
     $seen = [];
     foreach (($_POST['color_name'] ?? []) as $i => $name) {
@@ -64,7 +66,8 @@ function parse_option_posts(array &$errors): array {
         $seen[mb_strtolower($name)] = true;
         $swatch = trim((string) ($_POST['color_swatch'][$i] ?? ''));
         $image = handle_indexed_image_upload('color_image', (int) $i) ?? valid_upload_path($_POST['color_image_existing'][$i] ?? '');
-        $out['colors'][] = ['name' => $name, 'swatch' => preg_match('/^#[0-9a-fA-F]{6}$/', $swatch) ? strtolower($swatch) : null, 'image' => $image];
+        $out['colors'][] = ['name' => $name, 'swatch' => preg_match('/^#[0-9a-fA-F]{6}$/', $swatch) ? strtolower($swatch) : null, 'image' => $image,
+            'price_delta' => $money($_POST['color_delta'][$i] ?? 0)];
     }
 
     $seen = [];
@@ -78,7 +81,21 @@ function parse_option_posts(array &$errors): array {
         $out['sizes'][] = [
             'name' => $name, 'image' => $image, 'weight_grams' => $weight && $weight > 0 ? $weight : null,
             'height_mm' => int_or_null($_POST['size_h'][$i] ?? ''), 'width_mm' => int_or_null($_POST['size_w'][$i] ?? ''), 'depth_mm' => int_or_null($_POST['size_d'][$i] ?? ''),
+            'price_delta' => $money($_POST['size_delta'][$i] ?? 0),
         ];
+    }
+
+    // Customization choices (engraving, stitching…): a name, an optional note, an optional extra price and photo.
+    $seen = [];
+    foreach (($_POST['custom_name'] ?? []) as $i => $name) {
+        $name = mb_substr(trim((string) $name), 0, 80);
+        if ($name === '') continue;
+        if (isset($seen[mb_strtolower($name)])) { $errors[] = 'Customization "' . $name . '" is listed twice.'; continue; }
+        $seen[mb_strtolower($name)] = true;
+        $delta = $money($_POST['custom_delta'][$i] ?? 0);
+        if ($delta < 0) { $errors[] = 'Customization "' . $name . '": the added amount cannot be negative.'; $delta = 0; }
+        $image = handle_indexed_image_upload('custom_image', (int) $i) ?? valid_upload_path($_POST['custom_image_existing'][$i] ?? '');
+        $out['customs'][] = ['name' => $name, 'note' => mb_substr(trim((string) ($_POST['custom_note'][$i] ?? '')), 0, 255), 'price_delta' => $delta, 'image' => $image];
     }
     return $out;
 }
@@ -133,17 +150,17 @@ function save_product_variants(PDO $pdo, int $productId, array $colors, array $s
 
     $oldImages = []; $keep = [];
     $upsert = $pdo->prepare(
-        'INSERT INTO product_options (product_id, kind, name, swatch, image, weight_grams, height_mm, width_mm, depth_mm, sort_order)
-         VALUES (?,?,?,?,?,?,?,?,?,?)
+        'INSERT INTO product_options (product_id, kind, name, swatch, image, weight_grams, height_mm, width_mm, depth_mm, price_delta, sort_order)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?)
          ON DUPLICATE KEY UPDATE swatch = VALUES(swatch), image = VALUES(image), weight_grams = VALUES(weight_grams),
-           height_mm = VALUES(height_mm), width_mm = VALUES(width_mm), depth_mm = VALUES(depth_mm), sort_order = VALUES(sort_order)'
+           height_mm = VALUES(height_mm), width_mm = VALUES(width_mm), depth_mm = VALUES(depth_mm), price_delta = VALUES(price_delta), sort_order = VALUES(sort_order)'
     );
     foreach (['color' => $colors, 'size' => $sizes] as $kind => $list) {
         foreach ($list as $i => $o) {
             $prev = $existing[$kind][mb_strtolower($o['name'])] ?? null;
             if ($prev && $prev['image'] && $prev['image'] !== ($o['image'] ?? null)) $oldImages[] = $prev['image'];
             $upsert->execute([$productId, $kind, $o['name'], $o['swatch'] ?? null, $o['image'] ?? null,
-                $o['weight_grams'] ?? null, $o['height_mm'] ?? null, $o['width_mm'] ?? null, $o['depth_mm'] ?? null, $i]);
+                $o['weight_grams'] ?? null, $o['height_mm'] ?? null, $o['width_mm'] ?? null, $o['depth_mm'] ?? null, (float) ($o['price_delta'] ?? 0), $i]);
             $keep[$kind][mb_strtolower($o['name'])] = true;
         }
     }
@@ -196,20 +213,51 @@ function save_product_variants(PDO $pdo, int $productId, array $colors, array $s
 function variant_editor_data(int $productId): array {
     $opts = product_options_for($productId);
     return [
-        'colors' => array_map(fn ($o) => ['name' => $o['name'], 'swatch' => $o['swatch'] ?? null, 'image' => $o['image'] ?? null], $opts['color']),
-        'sizes' => array_map(fn ($o) => ['name' => $o['name'], 'image' => $o['image'] ?? null, 'weight' => $o['weight_grams'] ?? null,
+        'colors' => array_map(fn ($o) => ['name' => $o['name'], 'swatch' => $o['swatch'] ?? null, 'image' => $o['image'] ?? null, 'delta' => (float) ($o['price_delta'] ?? 0)], $opts['color']),
+        'sizes' => array_map(fn ($o) => ['name' => $o['name'], 'image' => $o['image'] ?? null, 'delta' => (float) ($o['price_delta'] ?? 0), 'weight' => $o['weight_grams'] ?? null,
             'h' => $o['height_mm'] ?? null, 'w' => $o['width_mm'] ?? null, 'd' => $o['depth_mm'] ?? null], $opts['size']),
         'combos' => array_map(fn ($v) => ['id' => (int) $v['id'], 'color' => $v['color'], 'size' => $v['size'], 'sku' => $v['sku'],
             'delta' => (float) $v['price_delta'], 'stock' => (int) $v['stock'], 'active' => (int) $v['is_active']], product_variants_for($productId, false)),
+        'customs' => array_map(fn ($c) => ['name' => $c['name'], 'note' => $c['note'] ?? '', 'delta' => (float) $c['price_delta'], 'image' => $c['image'] ?? null], product_customizations_for($productId, false)),
     ];
 }
 
 /** Same shape, rebuilt from a failed form submission so nothing the admin typed is lost. */
 function variant_editor_data_from_post(array $parsed, array $submittedCombos): array {
     return [
-        'colors' => array_map(fn ($o) => ['name' => $o['name'], 'swatch' => $o['swatch'], 'image' => $o['image']], $parsed['colors']),
-        'sizes' => array_map(fn ($o) => ['name' => $o['name'], 'image' => $o['image'], 'weight' => $o['weight_grams'], 'h' => $o['height_mm'], 'w' => $o['width_mm'], 'd' => $o['depth_mm']], $parsed['sizes']),
+        'colors' => array_map(fn ($o) => ['name' => $o['name'], 'swatch' => $o['swatch'], 'image' => $o['image'], 'delta' => $o['price_delta']], $parsed['colors']),
+        'customs' => array_map(fn ($c) => ['name' => $c['name'], 'note' => $c['note'], 'delta' => $c['price_delta'], 'image' => $c['image']], $parsed['customs'] ?? []),
+        'sizes' => array_map(fn ($o) => ['name' => $o['name'], 'image' => $o['image'], 'delta' => $o['price_delta'], 'weight' => $o['weight_grams'], 'h' => $o['height_mm'], 'w' => $o['width_mm'], 'd' => $o['depth_mm']], $parsed['sizes']),
         'combos' => array_map(fn ($r) => ['id' => (int) ($r['id'] ?? 0), 'color' => ($r['color'] ?? '') !== '' ? $r['color'] : null, 'size' => ($r['size'] ?? '') !== '' ? $r['size'] : null,
             'sku' => $r['sku'] ?? '', 'delta' => (float) ($r['delta'] ?? 0), 'stock' => (int) ($r['stock'] ?? 0), 'active' => !empty($r['active']) ? 1 : 0], array_values($submittedCombos)),
     ];
+}
+
+/**
+ * Makes the product's customization choices match the submitted list (upsert by name, drop the rest),
+ * and removes photos nothing uses any more.
+ */
+function save_product_customizations(PDO $pdo, int $productId, array $customs): void {
+    $stmt = $pdo->prepare('SELECT id, name, image FROM product_customizations WHERE product_id = ?');
+    $stmt->execute([$productId]);
+    $existing = [];
+    foreach ($stmt->fetchAll() as $r) $existing[mb_strtolower($r['name'])] = $r;
+
+    $oldImages = []; $keep = [];
+    $upsert = $pdo->prepare(
+        'INSERT INTO product_customizations (product_id, name, note, price_delta, image, is_active, sort_order) VALUES (?,?,?,?,?,1,?)
+         ON DUPLICATE KEY UPDATE note = VALUES(note), price_delta = VALUES(price_delta), image = VALUES(image), is_active = 1, sort_order = VALUES(sort_order)'
+    );
+    foreach ($customs as $i => $c) {
+        $prev = $existing[mb_strtolower($c['name'])] ?? null;
+        if ($prev && $prev['image'] && $prev['image'] !== ($c['image'] ?? null)) $oldImages[] = $prev['image'];
+        $upsert->execute([$productId, $c['name'], $c['note'] !== '' ? $c['note'] : null, (float) $c['price_delta'], $c['image'] ?? null, $i]);
+        $keep[mb_strtolower($c['name'])] = true;
+    }
+    foreach ($existing as $key => $r) {
+        if (isset($keep[$key])) continue;
+        $pdo->prepare('DELETE FROM product_customizations WHERE id = ?')->execute([$r['id']]);
+        if ($r['image']) $oldImages[] = $r['image'];
+    }
+    foreach (array_unique($oldImages) as $img) delete_upload_if_unused($img);
 }

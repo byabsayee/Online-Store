@@ -94,6 +94,20 @@
     window.addEventListener('beforeunload', function (e) { if (dirty && !submitting) { e.preventDefault(); e.returnValue = ''; } });
   }
 
+  /* ------------------------------------------- product form: pre-order + section nav --- */
+  var preBox = document.getElementById('is_preorder'), preFields = document.getElementById('preorderFields');
+  if (preBox && preFields) preBox.addEventListener('change', function () { preFields.hidden = !preBox.checked; });
+
+  var stepLinks = $$('#formSteps a');
+  if (stepLinks.length && 'IntersectionObserver' in window) {
+    var targets = stepLinks.map(function (a) { return document.querySelector(a.getAttribute('href')); });
+    var setActive = function (t) { stepLinks.forEach(function (a, i) { a.classList.toggle('is-active', targets[i] === t); }); };
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) { if (en.isIntersecting) setActive(en.target); });
+    }, { rootMargin: '-130px 0px -60% 0px', threshold: 0 });
+    targets.forEach(function (t) { if (t) io.observe(t); });
+  }
+
   /* ========================================================================
      Variant editor: Colors + Sizes + per-combination stock
      ======================================================================== */
@@ -113,16 +127,24 @@
   function addBtn(label, fn) { var b = el('button', { type: 'button', 'class': 'btn btn-outline btn-sm', text: label }); b.addEventListener('click', fn); return b; }
 
   mount.appendChild(el('div', { 'class': 'opt-block' }, [
-    el('h3', { text: 'Colors' }), el('div', { 'class': 'help', text: 'Optional. Give each color a swatch and/or a photo — the main picture switches to it when chosen.' }),
+    el('h3', { text: 'Colors' }), el('div', { 'class': 'help', text: 'Give each color a swatch and/or a photo — the main picture switches to it when chosen. "Extra price" is added to the base price (leave empty for none).' }),
     colorList, addBtn('+ Add color', function () { addColor({}); refreshCombos(); focusLast(colorList); })
   ]));
   mount.appendChild(el('div', { 'class': 'opt-block' }, [
-    el('h3', { text: 'Sizes' }), el('div', { 'class': 'help', text: 'Optional. Leave a size\'s dimensions or weight empty to use the product defaults above.' }),
+    el('h3', { text: 'Sizes' }), el('div', { 'class': 'help', text: 'A size can have its own extra price, photo, weight and dimensions. Anything left empty uses the product\'s own value.' }),
     sizeList, addBtn('+ Add size', function () { addSize({}); refreshCombos(); focusLast(sizeList); })
   ]));
   mount.appendChild(el('div', { 'class': 'opt-block' }, [
-    el('h3', { text: 'Stock & price per combination' }), comboWrap
+    el('h3', { text: 'Stock per combination' }), el('div', { 'class': 'help', text: 'Set the stock for every color/size pair. "Combination extra" is only for a specific pair that costs more or less on top of the color and size extras above.' }), comboWrap
   ]));
+
+  function priceField(nm, o, min) {
+    var attrs = { type: 'number', step: '0.01', name: nm, value: o.delta ? o.delta : '', placeholder: '0', 'aria-label': 'Extra price' };
+    if (min !== undefined) attrs.min = min;
+    var input = el('input', attrs);
+    input.addEventListener('input', function () { o.delta = input.value; });
+    return el('div', {}, [el('span', { 'class': 'mini-label', text: 'Extra price' }), el('div', { 'class': 'mini-affix' }, [el('span', { text: window.STORE_CURRENCY || '' }), input])]);
+  }
 
   function focusLast(list) { var last = list.lastElementChild; if (last) { var i = last.querySelector('input[type=text]'); if (i) i.focus(); } }
 
@@ -148,7 +170,7 @@
   }
 
   function addColor(c) {
-    var o = { rid: nextRid(), name: c.name || '', swatch: c.swatch || '', image: c.image || '' };
+    var o = { rid: nextRid(), name: c.name || '', swatch: c.swatch || '', image: c.image || '', delta: c.delta || '' };
     var picker = el('input', { type: 'color', title: 'Swatch color (optional)', value: o.swatch || '#cccccc', style: o.swatch ? '' : 'opacity:.45' });
     var hidden = el('input', { type: 'hidden', name: 'color_swatch[]', value: o.swatch });
     picker.addEventListener('input', function () { hidden.value = picker.value; picker.style.opacity = ''; });
@@ -156,7 +178,7 @@
     name.addEventListener('input', function () { o.name = name.value.trim(); refreshCombos(); });
     var rm = el('button', { type: 'button', 'class': 'rm', title: 'Remove color', text: '×' });
     rm.addEventListener('click', function () { colors = colors.filter(function (x) { return x !== o; }); row.remove(); refreshCombos(); });
-    var row = el('div', { 'class': 'opt-row color' }, [el('div', {}, [picker, hidden]), name, imgPicker('color', o), rm]);
+    var row = el('div', { 'class': 'opt-row color' }, [el('div', {}, [picker, hidden]), name, priceField('color_delta[]', o), imgPicker('color', o), rm]);
     colors.push(o); colorList.appendChild(row);
     return o;
   }
@@ -169,21 +191,54 @@
   function baseVal(id) { var e = document.getElementById(id); return e && e.value ? e.value : ''; }
 
   function addSize(s) {
-    var o = { rid: nextRid(), name: s.name || '', image: s.image || '', weight: s.weight, h: s.h, w: s.w, d: s.d };
+    var o = { rid: nextRid(), name: s.name || '', image: s.image || '', delta: s.delta || '', weight: s.weight, h: s.h, w: s.w, d: s.d };
     var name = el('input', { type: 'text', name: 'size_name[]', value: o.name, placeholder: 'e.g. Large', maxlength: 60, 'aria-label': 'Size name' });
     name.addEventListener('input', function () { o.name = name.value.trim(); refreshCombos(); });
     var rm = el('button', { type: 'button', 'class': 'rm', title: 'Remove size', text: '×' });
     rm.addEventListener('click', function () { sizes = sizes.filter(function (x) { return x !== o; }); row.remove(); refreshCombos(); });
+    var hasDims = [o.weight, o.h, o.w, o.d].some(function (x) { return x !== null && x !== undefined && x !== ''; });
+    var more = el('details', { 'class': 'opt-more' }, [
+      el('summary', { text: 'Weight & dimensions for this size (optional)' }),
+      el('div', { 'class': 'opt-dims' }, [
+        numField('Weight g', 'size_weight[]', o.weight, baseVal('weight_grams'), o, 'weight'),
+        numField('Height mm', 'size_h[]', o.h, baseVal('height_mm'), o, 'h'),
+        numField('Width mm', 'size_w[]', o.w, baseVal('width_mm'), o, 'w'),
+        numField('Depth mm', 'size_d[]', o.d, baseVal('depth_mm'), o, 'd')
+      ])
+    ]);
+    if (hasDims) more.open = true;
     var row = el('div', { 'class': 'opt-row size' }, [
       el('div', {}, [el('span', { 'class': 'mini-label', text: 'Size name' }), name]),
-      numField('Weight g', 'size_weight[]', o.weight, baseVal('weight_grams'), o, 'weight'),
-      numField('Height mm', 'size_h[]', o.h, baseVal('height_mm'), o, 'h'),
-      numField('Width mm', 'size_w[]', o.w, baseVal('width_mm'), o, 'w'),
-      numField('Depth mm', 'size_d[]', o.d, baseVal('depth_mm'), o, 'd'),
-      imgPicker('size', o), rm
+      priceField('size_delta[]', o), imgPicker('size', o), rm, more
     ]);
     sizes.push(o); sizeList.appendChild(row);
     return o;
+  }
+
+  /* ---- customization choices ---- */
+  var customMount = document.getElementById('customEditor');
+  var customs = [], customList = el('div', { 'class': 'opt-list' });
+  var customEmpty = el('div', { 'class': 'combo-empty', text: 'No customization yet — shoppers buy the product as it is.' });
+  function syncCustomEmpty() { customEmpty.style.display = customs.length ? 'none' : ''; }
+  function addCustom(c) {
+    var o = { rid: nextRid(), name: c.name || '', note: c.note || '', delta: c.delta || '', image: c.image || '' };
+    var name = el('input', { type: 'text', name: 'custom_name[]', value: o.name, placeholder: 'e.g. Name engraving', maxlength: 80, 'aria-label': 'Customization name' });
+    var note = el('input', { type: 'text', name: 'custom_note[]', value: o.note, placeholder: 'e.g. Up to 12 letters — add details in the order note', maxlength: 255, 'aria-label': 'Short note' });
+    var rm = el('button', { type: 'button', 'class': 'rm', title: 'Remove this customization', text: '×' });
+    rm.addEventListener('click', function () { customs = customs.filter(function (x) { return x !== o; }); row.remove(); syncCustomEmpty(); });
+    var row = el('div', { 'class': 'opt-row custom' }, [
+      el('div', {}, [el('span', { 'class': 'mini-label', text: 'Choice name' }), name]),
+      el('div', {}, [el('span', { 'class': 'mini-label', text: 'Note for shoppers (optional)' }), note]),
+      priceField('custom_delta[]', o, 0), imgPicker('custom', o), rm
+    ]);
+    customs.push(o); customList.appendChild(row); syncCustomEmpty();
+    return o;
+  }
+  if (customMount) {
+    customMount.appendChild(customEmpty);
+    customMount.appendChild(customList);
+    customMount.appendChild(addBtn('+ Add customization', function () { addCustom({}); focusLast(customList); }));
+    (init.customs || []).forEach(function (c) { addCustom(c); });
   }
 
   /* ---- combinations table ---- */
@@ -198,7 +253,7 @@
       setStockMode(false, 0); return;
     }
     var table = el('table', { 'class': 'combo-table' });
-    table.appendChild(el('thead', {}, [el('tr', {}, ['Combination', 'SKU', 'Price ± (' + (window.STORE_CURRENCY || '') + ')', 'Stock', 'On sale'].map(function (h) { return el('th', { text: h }); }))]));
+    table.appendChild(el('thead', {}, [el('tr', {}, ['Combination', 'SKU', 'Combination extra (' + (window.STORE_CURRENCY || '') + ')', 'Stock', 'On sale'].map(function (h) { return el('th', { text: h }); }))]));
     var tbody = el('tbody'); var n = 0;
     (cs.length ? cs : [null]).forEach(function (c) {
       (ss.length ? ss : [null]).forEach(function (s) {
@@ -251,7 +306,7 @@
     stockInput.readOnly = managed;
     stockInput.style.background = managed ? '#f1f0ea' : '';
     if (managed) stockInput.value = total;
-    if (stockHint) stockHint.textContent = managed ? 'Calculated from the combinations below.' : 'Units on hand. Ignored once you add colors or sizes below — stock is then tracked per combination.';
+    if (stockHint) stockHint.textContent = managed ? 'Calculated from the combinations below.' : 'Units on hand. Tracked per combination once you add colors or sizes.';
   }
 
   // ---- load initial data

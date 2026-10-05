@@ -105,9 +105,12 @@ class ErpMapProduct extends ErpMap {
         $st = db()->prepare('SELECT * FROM products WHERE id = ?'); $st->execute([$id]);
         $p = $st->fetch(); if (!$p) return null;
         $variants = [];
+        // The book sees one price per variant, so a color's / size's own extra price is folded into it.
+        $opts = product_options_for($id);
+        $cExtra = array_column($opts['color'], 'price_delta', 'name'); $sExtra = array_column($opts['size'], 'price_delta', 'name');
         foreach (product_variants_for($id, false) as $v) {
             $variants[] = ['variant_uuid' => erp_uuid_for('variant', (int) $v['id']), 'color' => $v['color'], 'size' => $v['size'], 'sku' => $v['sku'],
-                'price_delta' => erp_money($v['price_delta']), 'is_active' => (bool) $v['is_active']];
+                'price_delta' => erp_money((float) $v['price_delta'] + (float) ($cExtra[$v['color']] ?? 0) + (float) ($sExtra[$v['size']] ?? 0)), 'is_active' => (bool) $v['is_active']];
         }
         return ['sku' => $p['sku'], 'name' => $p['name'], 'slug' => $p['slug'], 'short_desc' => $p['short_desc'], 'description' => $p['description'],
             'price' => erp_money($p['price']), 'compare_price' => $p['compare_price'] !== null ? erp_money($p['compare_price']) : null, 'weight_grams' => (int) $p['weight_grams'],

@@ -4,16 +4,20 @@
 # Open http://<server>:${WEB_PORT:-8080}/admin and sign in with admin / admin (you must pick a new password).
 # The database tables are created automatically on first start. Set DB_PASS / DB_ROOT_PASS before going public.
 #
-# `web` is built from this folder. To use a prebuilt image instead (for example one published by your own
-# CI), set STORE_IMAGE in .env and run `docker compose pull && docker compose up -d`.
+# `web` runs the prebuilt image that GitHub Actions publishes to GHCR on every push to main
+# (.github/workflows/docker-publish.yml). That is what makes Portainer's "Pull and redeploy" work: it can
+# pull this image from the registry. There is deliberately NO `build:` block here — Portainer cannot build
+# from a local folder, and `online-store:local` does not exist on any registry, so pulling it fails with
+# "pull access denied for online-store".
+# Local development: docker-compose.override.yml (picked up automatically by `docker compose up -d --build`)
+# switches `web` to a local build. Portainer never reads that file.
+# Forks / other registries: set STORE_IMAGE in .env (or in the Portainer stack's environment variables).
 # Running several stores on one server? Give each its own folder, WEB_PORT and COMPOSE_PROJECT_NAME.
 
 services:
   web:
-    image: ${STORE_IMAGE:-online-store:local}
-    build:
-      context: .
-      dockerfile: docker/php/Dockerfile
+    image: ${STORE_IMAGE:-ghcr.io/byabsayee/online-store:latest}
+    pull_policy: always
     restart: unless-stopped
     ports:
       - "${WEB_PORT:-8080}:80"

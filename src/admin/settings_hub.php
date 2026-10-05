@@ -4,10 +4,11 @@ require_once __DIR__ . '/../includes/admin_auth.php';
 require_owner();
 $pageTitle = 'Store settings';
 $desc = [
-    'settings.php' => 'Name, contact details, social links, announcement bar, outgoing email, Google login',
+    'settings.php' => 'Name, contact details, social links, outgoing email, Google login',
     'contacts.php' => 'Extra addresses with Google Maps links, emails and phone numbers',
     'regional.php' => 'Currency, time zone, order-number prefix, delivery time, invoice text',
     'notifications.php' => 'Get an email whenever a new order arrives',
+    'maintenance.php' => 'Show an "Under Maintenance" page to visitors while you work on the store',
     'branding.php' => 'Logo, favicon, share image and link-preview text',
     'theme_settings.php' => 'Colours and seasonal effects',
     'fonts.php' => 'Title, primary and secondary fonts — upload or Google Fonts',

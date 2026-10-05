@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($preorderDate !== null && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $preorderDate)) $errors[] = 'Please enter a valid expected availability date.';
 
     // Colors / sizes / per-combination stock. Photos are stored as a side effect of parsing.
-    $parsed = ['colors' => [], 'sizes' => []];
+    $parsed = ['colors' => [], 'sizes' => [], 'customs' => []];
     $newMain = null; $newGallery = [];
     try {
         $parsed = parse_option_posts($errors);
@@ -70,6 +70,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     $combos = expected_combos($parsed['colors'], $parsed['sizes'], $_POST['combos'] ?? []);
     if (!$combos && $stock < 0) $errors[] = 'Stock cannot be negative.';
+    // However the optional extra prices are combined, the shopper's total must stay above zero.
+    $lowest = fn (array $rows) => $rows ? min(0, min(array_column($rows, 'price_delta'))) : 0;
+    if ($price > 0 && $price + $lowest($parsed['colors']) + $lowest($parsed['sizes']) + $lowest($combos) <= 0) {
+        $errors[] = 'The negative price adjustments on colors, sizes and combinations would bring the price to zero or below. Please lower them.';
+    }
 
     if (!$errors) {
         // URL slug: keep the existing one unless the admin edited it, so live links don't break on a rename.
@@ -105,6 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $vBefore = [];
             if ($product) foreach ($pdo->query('SELECT id, stock FROM product_variants WHERE product_id = ' . (int) $productId)->fetchAll() as $vb) $vBefore[(int) $vb['id']] = (int) $vb['stock'];
             $variantTotal = save_product_variants($pdo, $productId, $parsed['colors'], $parsed['sizes'], $combos);
+            save_product_customizations($pdo, $productId, $parsed['customs']);
             if ($variantTotal !== null) {
                 // Variant products are stocked per combination; keep the product-level number in step.
                 $pdo->prepare('UPDATE products SET stock = ? WHERE id = ?')->execute([$variantTotal, $productId]);
@@ -148,7 +154,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'tags' => 'Tags', 'price' => 'Price', 'compare_price' => 'Compare-at price', 'stock' => 'Stock', 'weight_grams' => 'Weight (g)', 'height_mm' => 'Height (mm)', 'width_mm' => 'Width (mm)',
                     'depth_mm' => 'Depth (mm)', 'color' => 'Colour', 'warranty_days' => 'Warranty (days)', 'link_url' => 'External link', 'link_title' => 'Link title', 'is_active' => 'Visible in shop', 'is_featured' => 'Featured',
                     'is_preorder' => 'Available for pre-order', 'preorder_note' => 'Pre-order note', 'preorder_available_date' => 'Expected availability']);
-                if ($variantsBefore !== json_encode(variant_editor_data($productId))) $diff['Colours / sizes / per-variant stock'] = ['(before)', 'edited'];
+                if ($variantsBefore !== json_encode(variant_editor_data($productId))) $diff['Colours / sizes / customization / per-variant stock'] = ['(before)', 'edited'];
                 if ($newMain) $diff['Main photo'] = ['(old photo)', 'replaced'];
                 if ($newGallery) $diff['Gallery photos'] = ['—', count($newGallery) . ' added'];
                 admin_log('product.update', 'Edited product "' . admin_log_clip($name, 80) . '"' . ($diff ? ': ' . admin_log_diff_summary($diff) : ' (saved, nothing changed)'), 'product', $productId, $diff ? ['changes' => $diff] : []);
@@ -190,7 +196,7 @@ if ($product) {
     $gallery = $gStmt->fetchAll();
     $editorData = $editorData ?? variant_editor_data((int) $product['id']);
 }
-$editorData = $editorData ?? ['colors' => [], 'sizes' => [], 'combos' => []];
+$editorData = $editorData ?? ['colors' => [], 'sizes' => [], 'combos' => [], 'customs' => []];
 $jsonFlags = JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
 
 $pageTitle = $product ? 'Edit product' : 'Add product';
@@ -201,160 +207,187 @@ require __DIR__ . '/includes/header.php';
   <div class="alert alert-error"><strong>Please fix the following:</strong><ul style="margin:6px 0 0 18px;padding:0;"><?php foreach ($errors as $err): ?><li><?= e($err) ?></li><?php endforeach; ?></ul></div>
 <?php endif; ?>
 
-<form method="post" enctype="multipart/form-data" id="productForm" autocomplete="off">
+<?php
+$hasLink = !empty($f['link_url']) || !empty($f['link_title']);
+$sym = e(store_currency_symbol());
+?>
+<form method="post" enctype="multipart/form-data" id="productForm" autocomplete="off" class="product-form">
   <?= csrf_field() ?>
+
+  <nav class="form-steps" id="formSteps" aria-label="Jump to a section">
+    <a href="#sec-basics" class="is-active">Basics</a>
+    <a href="#sec-photos">Photos</a>
+    <a href="#sec-pricing">Price &amp; stock</a>
+    <a href="#sec-shipping">Shipping</a>
+    <a href="#variantPanel">Colors &amp; sizes</a>
+    <a href="#customPanel">Customization</a>
+  </nav>
+
   <div class="form-layout">
     <div class="form-main">
 
-      <!-- ─────────────── Basics ─────────────── -->
-      <section class="panel">
-        <div class="panel-head"><h2>Basic information</h2></div>
+      <!-- ─────────────── 1 · Basics ─────────────── -->
+      <section class="panel" id="sec-basics">
+        <div class="panel-head"><h2><span class="num">1</span>Basic information</h2><span class="sub">What shoppers read first</span></div>
         <div class="panel-body">
           <div class="field">
             <label for="name">Product name</label>
             <input type="text" id="name" name="name" required maxlength="200" value="<?= e($f['name']) ?>" placeholder="e.g. Titanium Pocket Pry Bar">
           </div>
           <div class="field">
-            <label for="short_desc">Short description <span class="counter" data-counter-for="short_desc" data-max="255"></span></label>
-            <input type="text" id="short_desc" name="short_desc" maxlength="255" value="<?= e($f['short_desc']) ?>" placeholder="One line shown on product cards and search">
+            <label for="short_desc">Short description <span class="opt">optional</span><span class="counter" data-counter-for="short_desc" data-max="255"></span></label>
+            <input type="text" id="short_desc" name="short_desc" maxlength="255" value="<?= e($f['short_desc']) ?>" placeholder="One line shown on product cards and search results">
           </div>
           <div class="field">
-            <label for="description">Full description</label>
-            <textarea id="description" name="description" rows="7"><?= e($f['description']) ?></textarea>
+            <label for="description">Full description <span class="opt">optional</span></label>
+            <textarea id="description" name="description" rows="6" placeholder="Materials, what's in the box, care instructions…"><?= e($f['description']) ?></textarea>
           </div>
           <div class="field" style="margin-bottom:0;">
-            <label for="tags">Search tags</label>
+            <label for="tags">Search tags <span class="opt">optional</span></label>
             <input type="text" id="tags" name="tags" value="<?= e($f['tags']) ?>" data-chips placeholder="Type a tag and press Enter">
-            <div class="hint">Extra words shoppers might search for (e.g. <em>titanium, keychain, edc, gift</em>). Press Enter or comma after each one. Products are found by partial words, so "tita" already finds "titanium".</div>
+            <div class="hint">Extra words shoppers might search for (e.g. <em>titanium, keychain, gift</em>). Partial words work too.</div>
           </div>
         </div>
       </section>
 
-      <!-- ─────────────── Media ─────────────── -->
-      <section class="panel">
-        <div class="panel-head"><h2>Photos &amp; video</h2></div>
+      <!-- ─────────────── 2 · Photos ─────────────── -->
+      <section class="panel" id="sec-photos">
+        <div class="panel-head"><h2><span class="num">2</span>Photos &amp; video</h2><span class="sub">Square photos look best</span></div>
         <div class="panel-body">
-          <div class="field">
-            <span class="field-label">Main photo</span>
-            <div class="thumb-grid" id="mainPreview">
-              <?php if (!empty($f['image_main'])): ?>
-                <div class="thumb-tile"><img src="<?= e($f['image_main']) ?>" alt=""><span class="badge">Main</span></div>
-              <?php endif; ?>
-            </div>
-            <div class="upload-box" style="margin-top:10px;">
-              <input type="file" name="image_main" accept="image/jpeg,image/png,image/webp,image/gif" data-preview="#mainPreview" data-replace>
-              <div class="hint">JPG, PNG, WEBP or GIF, up to 5 MB. Square photos look best. <?= $product ? 'Choosing a new file replaces the current one.' : '' ?></div>
-            </div>
-          </div>
-
-          <div class="field">
-            <span class="field-label">More photos</span>
-            <?php if ($gallery): ?>
-              <div class="thumb-grid" style="margin-bottom:12px;">
-                <?php foreach ($gallery as $g): ?>
-                  <div class="thumb-tile">
-                    <img src="<?= e($g['image_path']) ?>" alt="">
-                    <div class="tile-actions">
-                      <!-- These buttons belong to forms placed after the main form (nested forms aren't valid HTML). -->
-                      <button type="submit" form="imgform-<?= (int) $g['id'] ?>" name="action" value="make_main" title="Use as the main photo">Make main</button>
-                      <button type="submit" form="imgform-<?= (int) $g['id'] ?>" name="action" value="delete" class="del" title="Remove this photo">Remove</button>
-                    </div>
-                  </div>
-                <?php endforeach; ?>
+          <div class="photo-grid">
+            <div class="field">
+              <span class="field-label">Main photo</span>
+              <div class="thumb-grid" id="mainPreview">
+                <?php if (!empty($f['image_main'])): ?>
+                  <div class="thumb-tile"><img src="<?= e($f['image_main']) ?>" alt=""><span class="badge">Main</span></div>
+                <?php endif; ?>
               </div>
-            <?php endif; ?>
-            <div class="thumb-grid" id="galleryPreview"></div>
-            <div class="upload-box" style="margin-top:10px;">
-              <input type="file" name="gallery_images[]" accept="image/jpeg,image/png,image/webp,image/gif" multiple data-preview="#galleryPreview">
-              <div class="hint">Select several at once. They're added to the gallery when you save.</div>
+              <div class="upload-box">
+                <input type="file" name="image_main" accept="image/jpeg,image/png,image/webp,image/gif" data-preview="#mainPreview" data-replace>
+                <div class="hint">JPG, PNG, WEBP or GIF, up to 5 MB. <?= $product ? 'Choosing a new file replaces the current one.' : '' ?></div>
+              </div>
+            </div>
+            <div class="field">
+              <span class="field-label">More photos <span class="opt">optional</span></span>
+              <?php if ($gallery): ?>
+                <div class="thumb-grid" style="margin-bottom:10px;">
+                  <?php foreach ($gallery as $g): ?>
+                    <div class="thumb-tile">
+                      <img src="<?= e($g['image_path']) ?>" alt="">
+                      <div class="tile-actions">
+                        <!-- These buttons belong to forms placed after the main form (nested forms aren't valid HTML). -->
+                        <button type="submit" form="imgform-<?= (int) $g['id'] ?>" name="action" value="make_main" title="Use as the main photo">Make main</button>
+                        <button type="submit" form="imgform-<?= (int) $g['id'] ?>" name="action" value="delete" class="del" title="Remove this photo">Remove</button>
+                      </div>
+                    </div>
+                  <?php endforeach; ?>
+                </div>
+              <?php endif; ?>
+              <div class="thumb-grid" id="galleryPreview"></div>
+              <div class="upload-box">
+                <input type="file" name="gallery_images[]" accept="image/jpeg,image/png,image/webp,image/gif" multiple data-preview="#galleryPreview">
+                <div class="hint">Select several at once. They're added when you save.</div>
+              </div>
             </div>
           </div>
 
-          <div class="field-row" style="margin-bottom:0;">
-            <div class="field" style="margin-bottom:0;">
-              <label for="link_title">External link title <span class="muted" style="font-weight:400;">(optional)</span></label>
-              <input type="text" id="link_title" name="link_title" maxlength="80" value="<?= e($f['link_title']) ?>" placeholder="e.g. Watch the video, Size guide, Manual">
+          <details class="more" <?= $hasLink ? 'open' : '' ?>>
+            <summary>Add a video or external link <span class="opt">optional</span></summary>
+            <div class="field-row" style="margin:12px 0 0;">
+              <div class="field" style="margin-bottom:0;">
+                <label for="link_title">Link title</label>
+                <input type="text" id="link_title" name="link_title" maxlength="80" value="<?= e($f['link_title']) ?>" placeholder="e.g. Watch the video, Size guide">
+              </div>
+              <div class="field" style="margin-bottom:0;">
+                <label for="link_url">Link address</label>
+                <input type="url" id="link_url" name="link_url" value="<?= e($f['link_url']) ?>" placeholder="https://… (YouTube, a PDF, any page)">
+              </div>
             </div>
-            <div class="field" style="margin-bottom:0;">
-              <label for="link_url">External link <span class="muted" style="font-weight:400;">(YouTube, a PDF, any web page)</span></label>
-              <input type="url" id="link_url" name="link_url" value="<?= e($f['link_url']) ?>" placeholder="https://…">
-            </div>
-          </div>
-        </div>
+          </details>
         </div>
       </section>
 
-      <!-- ─────────────── Pricing / size ─────────────── -->
-      <section class="panel">
-        <div class="panel-head"><h2>Pricing &amp; inventory</h2></div>
+      <!-- ─────────────── 3 · Price & stock ─────────────── -->
+      <section class="panel" id="sec-pricing">
+        <div class="panel-head"><h2><span class="num">3</span>Price &amp; stock</h2><span class="sub">Base price — options below can add to it</span></div>
         <div class="panel-body">
           <div class="field-row cols-3">
             <div class="field">
               <label for="price">Selling price</label>
-              <div class="input-affix"><span class="affix"><?= e(store_currency_symbol()) ?></span><input type="number" step="0.01" min="0" id="price" name="price" required value="<?= e($f['price']) ?>"></div>
+              <div class="input-affix"><span class="affix"><?= $sym ?></span><input type="number" step="0.01" min="0" id="price" name="price" required value="<?= e($f['price']) ?>"></div>
             </div>
             <div class="field">
-              <label for="compare_price">Compare at <span class="muted" style="font-weight:400;">(optional)</span></label>
-              <div class="input-affix"><span class="affix"><?= e(store_currency_symbol()) ?></span><input type="number" step="0.01" min="0" id="compare_price" name="compare_price" value="<?= e($f['compare_price']) ?>"></div>
+              <label for="compare_price">Compare at <span class="opt">optional</span></label>
+              <div class="input-affix"><span class="affix"><?= $sym ?></span><input type="number" step="0.01" min="0" id="compare_price" name="compare_price" value="<?= e($f['compare_price']) ?>"></div>
               <div class="hint">Shows the old price crossed out.</div>
             </div>
             <div class="field">
-              <label for="sku">SKU <span class="muted" style="font-weight:400;">(optional)</span></label>
-              <input type="text" id="sku" name="sku" value="<?= e($f['sku']) ?>" maxlength="60">
-            </div>
-          </div>
-          <div class="field-row" style="margin-bottom:0;">
-            <div class="field">
               <label for="stock">Stock</label>
               <input type="number" min="0" id="stock" name="stock" value="<?= e($f['stock']) ?>">
-              <div class="hint" id="stockHint">Units on hand. Ignored once you add colors or sizes below — stock is then tracked per combination.</div>
-            </div>
-            <div class="field">
-              <label for="warranty_days">Warranty <span class="muted" style="font-weight:400;">(optional)</span></label>
-              <div class="input-affix"><input type="number" min="1" max="3650" id="warranty_days" name="warranty_days" value="<?= e($f['warranty_days']) ?>" placeholder="e.g. 365"><span class="affix">days</span></div>
-              <div class="hint">Shown on the product page and on the invoice once the order ships. Leave empty for no warranty.</div>
+              <div class="hint" id="stockHint">Units on hand. Tracked per combination once you add colors or sizes.</div>
             </div>
           </div>
-          <div class="field-row" style="margin-bottom:0;">
-            <div class="field" style="flex:0 0 100%;">
-              <label class="switch"><input type="checkbox" id="is_preorder" name="is_preorder" value="1" <?= $f['is_preorder'] ? 'checked' : '' ?>><span class="track"></span><span>Available for pre-order<small>Lets shoppers order this even while stock is 0. Shows a "Pre-order" button and note instead of "Out of stock".</small></span></label>
+          <div class="field-row">
+            <div class="field">
+              <label for="sku">SKU <span class="opt">optional</span></label>
+              <input type="text" id="sku" name="sku" value="<?= e($f['sku']) ?>" maxlength="60">
             </div>
             <div class="field">
-              <label for="preorder_note">Pre-order note <span class="muted" style="font-weight:400;">(optional)</span></label>
-              <input type="text" id="preorder_note" name="preorder_note" value="<?= e($f['preorder_note']) ?>" maxlength="255" placeholder="e.g. Ships in 2–3 weeks">
-              <div class="hint">Shown next to the Pre-order button on the product page.</div>
+              <label for="warranty_days">Warranty <span class="opt">optional</span></label>
+              <div class="input-affix"><input type="number" min="1" max="3650" id="warranty_days" name="warranty_days" value="<?= e($f['warranty_days']) ?>" placeholder="e.g. 365"><span class="affix">days</span></div>
+              <div class="hint">Shown on the product page and invoice. Empty = no warranty.</div>
             </div>
-            <div class="field">
-              <label for="preorder_available_date">Expected availability <span class="muted" style="font-weight:400;">(optional)</span></label>
-              <input type="date" id="preorder_available_date" name="preorder_available_date" value="<?= e($f['preorder_available_date']) ?>">
+          </div>
+
+          <div class="toggle-block">
+            <label class="switch"><input type="checkbox" id="is_preorder" name="is_preorder" value="1" <?= $f['is_preorder'] ? 'checked' : '' ?>><span class="track"></span><span>Available for pre-order<small>Shoppers can order this even while stock is 0, and see a "Pre-order" button instead of "Out of stock".</small></span></label>
+            <div class="field-row toggle-body" id="preorderFields" <?= $f['is_preorder'] ? '' : 'hidden' ?>>
+              <div class="field" style="margin-bottom:0;">
+                <label for="preorder_note">Pre-order note <span class="opt">optional</span></label>
+                <input type="text" id="preorder_note" name="preorder_note" value="<?= e($f['preorder_note']) ?>" maxlength="255" placeholder="e.g. Ships in 2–3 weeks">
+              </div>
+              <div class="field" style="margin-bottom:0;">
+                <label for="preorder_available_date">Expected availability <span class="opt">optional</span></label>
+                <input type="date" id="preorder_available_date" name="preorder_available_date" value="<?= e($f['preorder_available_date']) ?>">
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <section class="panel">
-        <div class="panel-head"><h2>Size &amp; weight <span class="sub">defaults for this product</span></h2></div>
+      <!-- ─────────────── 4 · Shipping ─────────────── -->
+      <section class="panel" id="sec-shipping">
+        <div class="panel-head"><h2><span class="num">4</span>Weight &amp; size</h2><span class="sub">Used for shipping and shown on the page</span></div>
         <div class="panel-body">
           <div class="field-row cols-4">
             <div class="field"><label for="weight_grams">Weight</label><div class="input-affix"><input type="number" min="1" id="weight_grams" name="weight_grams" required value="<?= e($f['weight_grams']) ?>"><span class="affix">g</span></div></div>
-            <div class="field"><label for="height_mm">Height</label><div class="input-affix"><input type="number" min="0" id="height_mm" name="height_mm" value="<?= e($f['height_mm']) ?>"><span class="affix">mm</span></div></div>
-            <div class="field"><label for="width_mm">Width</label><div class="input-affix"><input type="number" min="0" id="width_mm" name="width_mm" value="<?= e($f['width_mm']) ?>"><span class="affix">mm</span></div></div>
-            <div class="field"><label for="depth_mm">Depth</label><div class="input-affix"><input type="number" min="0" id="depth_mm" name="depth_mm" value="<?= e($f['depth_mm']) ?>"><span class="affix">mm</span></div></div>
+            <div class="field"><label for="height_mm">Height <span class="opt">opt.</span></label><div class="input-affix"><input type="number" min="0" id="height_mm" name="height_mm" value="<?= e($f['height_mm']) ?>"><span class="affix">mm</span></div></div>
+            <div class="field"><label for="width_mm">Width <span class="opt">opt.</span></label><div class="input-affix"><input type="number" min="0" id="width_mm" name="width_mm" value="<?= e($f['width_mm']) ?>"><span class="affix">mm</span></div></div>
+            <div class="field"><label for="depth_mm">Depth <span class="opt">opt.</span></label><div class="input-affix"><input type="number" min="0" id="depth_mm" name="depth_mm" value="<?= e($f['depth_mm']) ?>"><span class="affix">mm</span></div></div>
           </div>
-          <div class="field" style="margin-bottom:0;max-width:340px;">
-            <label for="color">Material / finish <span class="muted" style="font-weight:400;">(optional)</span></label>
+          <div class="field" style="margin-bottom:0;max-width:360px;">
+            <label for="color">Material / finish <span class="opt">optional</span></label>
             <input type="text" id="color" name="color" value="<?= e($f['color']) ?>" placeholder="e.g. Chestnut brown, stonewashed">
-            <div class="hint">Only shown when the product has no color options below.</div>
+            <div class="hint">Only shown when the product has no color options.</div>
           </div>
         </div>
       </section>
 
-      <!-- ─────────────── Variants ─────────────── -->
+      <!-- ─────────────── 5 · Colors & sizes ─────────────── -->
       <section class="panel" id="variantPanel">
-        <div class="panel-head"><h2>Colors &amp; sizes <span class="sub">shoppers pick each one separately</span></h2></div>
+        <div class="panel-head"><h2><span class="num">5</span>Colors &amp; sizes</h2><span class="pill pill-ink">Optional</span></div>
         <div class="panel-body">
-          <p class="help">Add the colors and the sizes this product comes in. Each color can have its own photo, and each size its own dimensions and weight — the product page updates the picture, size and weight as the shopper chooses. Then set stock and any price difference per combination.</p>
+          <p class="help">Skip this if your product comes in one version. Otherwise add the colors and/or sizes — shoppers pick each separately and the photo, weight and price update as they choose. Each color or size can add an optional extra amount to the price.</p>
           <div id="variantEditor"></div>
+        </div>
+      </section>
+
+      <!-- ─────────────── 6 · Customization ─────────────── -->
+      <section class="panel" id="customPanel">
+        <div class="panel-head"><h2><span class="num">6</span>Customization</h2><span class="pill pill-ink">Optional</span></div>
+        <div class="panel-body">
+          <p class="help">Offer personalised extras — for example <em>Name engraving</em>, <em>Gold stitching</em> or <em>Gift wrap</em>. Shoppers can pick one (or keep the standard product). Each choice can add its own amount to the price and show its own photo.</p>
+          <div id="customEditor"></div>
         </div>
       </section>
     </div>
@@ -392,11 +425,7 @@ require __DIR__ . '/includes/header.php';
         </div>
       </section>
       <?php if ($product): ?>
-        <section class="panel">
-          <div class="panel-body">
-            <a class="btn btn-outline btn-sm" style="width:100%;" href="/product.php?slug=<?= e($product['slug']) ?>" target="_blank">View on store ↗</a>
-          </div>
-        </section>
+        <a class="btn btn-outline btn-sm" style="width:100%;" href="/product.php?slug=<?= e($product['slug']) ?>" target="_blank">View on store ↗</a>
       <?php endif; ?>
     </aside>
   </div>

@@ -49,6 +49,10 @@ $__activeCat = $_GET['slug'] ?? '';
 <body class="<?= e($__pageClass) ?>">
 <a class="skip-link" href="#main">Skip to content</a>
 
+<?php if (!empty($_SESSION['admin_id']) && maintenance_enabled()): ?>
+<div class="maint-admin-bar" role="status">Maintenance mode is ON — visitors see the "Under Maintenance" page; you can still browse because you're signed in to admin. <a href="/admin/maintenance.php">Manage</a></div>
+<?php endif; ?>
+
 <?php if ($__topbar['enabled']): ?>
 <div class="topbar" role="region" aria-label="Announcement">
   <div class="wrap">

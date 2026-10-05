@@ -203,7 +203,10 @@ function font_head(): array {
     foreach (font_roles() as $role => [$var]) {
         $c = font_choice($role);
         if ($c['src'] === 'google' && font_name_ok($c['name'])) {
-            $links[] = 'https://fonts.googleapis.com/css2?family=' . str_replace('%20', '+', rawurlencode($c['name'])) . ':wght@400;500;600;700&display=swap';
+            // The classic CSS endpoint skips weights a family doesn't have. The newer css2 one answers "400 Bad Request"
+            // for the whole stylesheet instead (e.g. a single-weight display font asked for 500/600/700), which left
+            // phones — that have no copy of the font installed — on the fallback font.
+            $links[] = 'https://fonts.googleapis.com/css?family=' . str_replace('%20', '+', rawurlencode($c['name'])) . ':400,500,600,700&display=swap';
             $vars .= $var . ':"' . $c['name'] . '",' . font_fallback($role) . ';';
         } elseif ($c['src'] === 'upload' && $c['file'] !== '' && preg_match('~^/uploads/fonts/font-[a-f0-9]{12}\.(ttf|otf|woff2?)$~', $c['file'], $m)) {
             $fam = 'Custom ' . ucfirst($role);

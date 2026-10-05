@@ -11,11 +11,13 @@
     var $ = function (id) { return doc.getElementById(id); };
     var els = {
       price: $('productPrice'), variantField: $('variantIdField'), qty: $('qtyField'), addBtn: $('addCartBtn'),
-      stockLine: $('stockLine'), mainImg: $('galleryMainImg'), colorChosen: $('colorChosen'), sizeChosen: $('sizeChosen'),
+      stockLine: $('stockLine'), customField: $('customIdField'), customChosen: $('customChosen'), customNote: $('customNote'), mainImg: $('galleryMainImg'), colorChosen: $('colorChosen'), sizeChosen: $('sizeChosen'),
       dimsRow: $('metaDims'), dimsVal: $('metaDimsVal'), weightRow: $('metaWeight'), weightVal: $('metaWeightVal')
     };
     var hasColors = data.colors.length > 0, hasSizes = data.sizes.length > 0;
-    var state = { color: null, size: null, last: null };
+    var hasCustoms = (data.customs || []).length > 0;
+    var simple = data.variants.length === 0; // customization only: stock and cart controls stay as the server rendered them
+    var state = { color: null, size: null, custom: '', last: null };
 
     function money(n) { return data.symbol + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
     function find(list, name) { for (var i = 0; i < list.length; i++) if (list[i].name === name) return list[i]; return null; }
@@ -26,6 +28,11 @@
         var v = data.variants[i];
         if ((v.color || null) === (color || null) && (v.size || null) === (size || null)) return v;
       }
+      return null;
+    }
+    function customChosen() {
+      if (!hasCustoms || state.custom === '') return null;
+      for (var i = 0; i < data.customs.length; i++) if (String(data.customs[i].id) === String(state.custom)) return data.customs[i];
       return null;
     }
     function inStock(v) { return !!v && v.stock > 0; }
@@ -53,6 +60,8 @@
     function imageForState() {
       var c = hasColors ? find(data.colors, state.color) : null;
       var s = hasSizes ? find(data.sizes, state.size) : null;
+      var cu = customChosen();
+      if (state.last === 'custom' && cu && cu.image) return cu.image;
       if (state.last === 'size' && s && s.image) return s.image;
       if (c && c.image) return c.image;
       if (s && s.image) return s.image;
@@ -98,23 +107,30 @@
     }
 
     function render() {
-      var v = variantFor(hasColors ? state.color : null, hasSizes ? state.size : null);
+      var v = simple ? null : variantFor(hasColors ? state.color : null, hasSizes ? state.size : null);
 
       doc.querySelectorAll('.swatch, .chip').forEach(function (b) {
         var kind = b.getAttribute('data-kind'), val = b.getAttribute('data-value');
-        var selected = (kind === 'color' ? state.color : state.size) === val;
+        var selected = state[kind] === val;
         b.classList.toggle('is-selected', selected);
-        b.classList.toggle('is-unavailable', !available(kind, val));
+        if (kind !== 'custom') b.classList.toggle('is-unavailable', !available(kind, val));
         b.setAttribute('aria-pressed', selected ? 'true' : 'false');
       });
       if (els.colorChosen) els.colorChosen.textContent = state.color || '';
       if (els.sizeChosen) els.sizeChosen.textContent = state.size || '';
 
-      // price / stock / cart controls
-      var price = data.basePrice + (v ? v.delta : 0);
+      var cu = customChosen();
+      if (els.customChosen) els.customChosen.textContent = cu ? cu.name : '';
+      if (els.customField) els.customField.value = cu ? String(cu.id) : '';
+      if (els.customNote) { els.customNote.textContent = cu && cu.note ? cu.note : ''; els.customNote.hidden = !(cu && cu.note); }
+
+      // price = base + color extra + size extra + combination extra + customization extra
+      var cOpt = hasColors ? find(data.colors, state.color) : null, sOpt = hasSizes ? find(data.sizes, state.size) : null;
+      var price = data.basePrice + (cOpt && cOpt.delta || 0) + (sOpt && sOpt.delta || 0) + (v ? v.delta : 0) + (cu && cu.delta || 0);
       if (els.price) els.price.textContent = money(price);
       var stock = v ? v.stock : 0;
       var canOrder = inStock(v) || (v && data.preorder);
+      if (!simple) {
       if (els.variantField) els.variantField.value = v ? String(v.id) : '';
       if (els.qty) {
         var qtyCap = stock > 0 ? stock : (data.preorder ? 99 : 1);
@@ -131,6 +147,7 @@
           : data.preorder ? '<span class="pill pill-brass">Pre-order' + (data.preorderNote ? ' — ' + data.preorderNote : '') + '</span>'
           : '<span class="pill pill-ink">Out of stock</span>';
       }
+      }
 
       // dimensions + weight follow the chosen size
       var sp = resolvedSpecs();
@@ -144,8 +161,9 @@
     }
 
     function select(kind, value) {
-      state[kind] = value; state.last = kind;
-      fixPartner(kind);
+      state[kind] = value;
+      state.last = kind === 'custom' && value === '' ? null : kind;
+      if (kind !== 'custom') fixPartner(kind);
       render();
     }
 

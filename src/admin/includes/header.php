@@ -11,7 +11,7 @@ function nav_link(string $href, string $label, array $files, string $current, st
 /** Store-settings screens, grouped for the tab bar: group => [file => label]. */
 function admin_settings_groups(): array {
     return [
-        'Store' => ['settings.php' => 'Details & email', 'regional.php' => 'Region & invoices', 'contacts.php' => 'Addresses & contacts', 'notifications.php' => 'Order alerts'],
+        'Store' => ['settings.php' => 'Details & email', 'regional.php' => 'Region & invoices', 'contacts.php' => 'Addresses & contacts', 'notifications.php' => 'Order alerts', 'maintenance.php' => 'Maintenance'],
         'Look' => ['branding.php' => 'Branding', 'theme_settings.php' => 'Theme', 'fonts.php' => 'Fonts'],
         'Content' => ['pages.php' => 'Pages', 'email_templates.php' => 'Emails', 'footer_links.php' => 'Footer', 'partners.php' => 'Partners', 'ads.php' => 'Ads'],
         'Checkout' => ['payment_methods.php' => 'Payments', 'delivery_tax.php' => 'Delivery & tax'],
@@ -75,7 +75,7 @@ $__ico = [
       <?= nav_link('/admin/reviews.php', 'Reviews', ['reviews.php'], $__path, $__ico['star']) ?>
       <div class="section-label">Grow</div>
       <?= nav_link('/admin/coupons.php', 'Coupons', ['coupons.php', 'coupon_form.php'], $__path, $__ico['ticket']) ?>
-      <?php if (admin_is_owner()): ?><?= nav_link('/admin/promotions.php', 'Promotional emails', ['promotions.php'], $__path, $__ico['mail']) ?><?php endif; ?>
+      <?php if (admin_is_owner()): ?><?= nav_link('/admin/promotions.php', 'Promotions', ['promotions.php'], $__path, $__ico['mail']) ?><?php endif; ?>
       <?= nav_link('/admin/users.php', 'Customers', ['users.php'], $__path, $__ico['users']) ?>
       <?php if (admin_is_owner()): ?>
       <div class="section-label">Store</div>
@@ -89,7 +89,7 @@ $__ico = [
 
   <div class="admin-main">
     <div class="admin-topbar">
-      <h1><?= e($pageTitle ?? 'Admin') ?></h1>
+      <h1><?= e($pageTitle ?? 'Admin') ?><?php if (function_exists('maintenance_enabled') && maintenance_enabled()): ?> <a href="/admin/maintenance.php" class="pill pill-rust" style="vertical-align:middle;margin-left:8px;" title="Visitors currently see the Under Maintenance page">Maintenance ON</a><?php endif; ?></h1>
       <div class="admin-user">
         <span class="who"><?= staff_avatar_html((int) $__admin['id'], (string) $__admin['name'], $__admin['photo_v'] ?? null, 28) ?><span>Signed in as <strong><?= e($__admin['name']) ?></strong></span></span>
         <a href="/" target="_blank" class="link">View store ↗</a>

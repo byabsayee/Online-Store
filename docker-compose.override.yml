@@ -5,6 +5,12 @@
 
 services:
   web:
+    # Local development builds the image from this folder instead of pulling it from GHCR.
+    image: online-store:local
+    pull_policy: never
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
     volumes:
       - ./src:/var/www/html
       - ./uploads:/var/www/html/uploads

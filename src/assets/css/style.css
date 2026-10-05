@@ -428,7 +428,7 @@ input, select, textarea { font-family: inherit; font-size: 1rem; }
 /* ==========================================================================
    Shared bits: icons, logo, skip link, panels, table scroller
    ========================================================================== */
-html { -webkit-text-size-adjust: 100%; scroll-padding-top: 90px; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; scroll-padding-top: 90px; }
 a, button { -webkit-tap-highlight-color: transparent; }
 button, .btn, .tab, .chip, .swatch { touch-action: manipulation; }
 .i { display: block; flex-shrink: 0; }
@@ -449,6 +449,12 @@ button, .btn, .tab, .chip, .swatch { touch-action: manipulation; }
 :root[data-theme="dark"] .site-header .brand .logo-l:not(.plate-in-dark) { display: none; }
 :root[data-theme="dark"] .site-header .brand .plate-in-dark { background: #fff; padding: 4px 8px; border-radius: 8px; box-sizing: content-box; height: 32px; }
 .brand-logo + .brand-name { font-size: 2rem; font-weight: 700; margin-left: 2px; }
+/* On phones the store name must follow the phone sizes (the rule above is more specific than `.brand`, which made it huge). */
+@media (max-width: 860px) {
+  .brand .brand-name, .brand-logo + .brand-name { font-size: clamp(1.1rem, 5.4vw, 1.5rem); line-height: 1.15; }
+  .mnav-head .brand .brand-name, .mnav-head .brand-logo + .brand-name { font-size: 1.2rem; }
+}
+@media (max-width: 380px) { .brand .brand-name, .brand-logo + .brand-name { font-size: clamp(1rem, 5.2vw, 1.2rem); } }
 
 /* footer contact details */
 .footer-brand .brand { color: var(--on-dark); margin-bottom: 12px; }
@@ -869,3 +875,12 @@ label.switch input:focus-visible + .track { outline: 2px solid var(--brass); out
 /* ---- multiple contact rows ---- */
 .c-label{font-style:normal;font-family:var(--font-mono);font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;opacity:.75;margin-right:4px}
 .map-link{font-weight:600;text-decoration:underline;text-underline-offset:2px;white-space:nowrap}
+
+/* Customization choice on the product page */
+.chip .chip-extra { font-size: .74rem; font-weight: 500; color: var(--ink-faint); white-space: nowrap; }
+.chip.is-selected .chip-extra { color: inherit; opacity: .8; }
+.option-note { margin-top: 8px; font-size: .84rem; color: var(--ink-soft); }
+.option-note[hidden] { display: none; }
+
+.maint-admin-bar { background: #a84a2c; color: #fff; text-align: center; font-size: .82rem; padding: 7px 14px; }
+.maint-admin-bar a { color: #fff; text-decoration: underline; font-weight: 600; }

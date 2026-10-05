@@ -66,6 +66,7 @@ const ADMIN_LOG_ACTIONS = [
     'review.show'          => ['Review published', 'sage'],
     'review.delete'        => ['Review deleted', 'rust'],
     'settings.announcement' => ['Announcement bar edited', 'ink'],
+    'settings.maintenance' => ['Maintenance mode changed', 'brass'],
     'settings.store'       => ['Store details edited', 'ink'],
     'settings.email'       => ['Email settings edited', 'ink'],
     'settings.test_email'  => ['Sent a test email', 'ink'],

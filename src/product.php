@@ -45,6 +45,7 @@ $usedColors = array_flip(array_filter(array_column($variants, 'color')));
 $usedSizes = array_flip(array_filter(array_column($variants, 'size')));
 $colorOpts = array_values(array_filter($options['color'], fn ($o) => isset($usedColors[$o['name']])));
 $sizeOpts = array_values(array_filter($options['size'], fn ($o) => isset($usedSizes[$o['name']])));
+$customOpts = product_customizations_for((int) $product['id']);
 $totalVariantStock = 0;
 foreach ($variants as $v) { $totalVariantStock += (int) $v['stock']; }
 $effectiveStock = $variants ? $totalVariantStock : (int) $product['stock'];
@@ -63,9 +64,10 @@ $pickerData = [
         'stock' => (int) $product['stock'],
         'image' => product_image_src($gallery[0]),
     ],
-    'colors' => array_map(fn ($o) => ['name' => $o['name'], 'image' => $o['image'] ?: null], $colorOpts),
+    'colors' => array_map(fn ($o) => ['name' => $o['name'], 'image' => $o['image'] ?: null, 'delta' => (float) ($o['price_delta'] ?? 0)], $colorOpts),
+    'customs' => array_map(fn ($c) => ['id' => (int) $c['id'], 'name' => $c['name'], 'note' => $c['note'] ?: null, 'image' => $c['image'] ?: null, 'delta' => (float) $c['price_delta']], $customOpts),
     'sizes' => array_map(fn ($o) => [
-        'name' => $o['name'], 'image' => $o['image'] ?: null,
+        'name' => $o['name'], 'image' => $o['image'] ?: null, 'delta' => (float) ($o['price_delta'] ?? 0),
         'weight' => $o['weight_grams'] !== null ? (int) $o['weight_grams'] : null,
         'h' => $o['height_mm'] !== null ? (int) $o['height_mm'] : null,
         'w' => $o['width_mm'] !== null ? (int) $o['width_mm'] : null,
@@ -207,10 +209,24 @@ require __DIR__ . '/includes/header.php';
       </div>
     <?php endif; ?>
 
+    <?php if ($customOpts): ?>
+      <div class="option-group" id="customGroup">
+        <div class="option-label">Customization <span class="chosen" id="customChosen"></span></div>
+        <div class="option-choices" role="group" aria-label="Customization">
+          <button type="button" class="chip is-selected" data-kind="custom" data-value="" aria-pressed="true">Standard</button>
+          <?php foreach ($customOpts as $c): ?>
+            <button type="button" class="chip" data-kind="custom" data-value="<?= (int) $c['id'] ?>" aria-pressed="false"><?= e($c['name']) ?><?php if ((float) $c['price_delta'] != 0): ?><span class="chip-extra"> +<?= e(money($c['price_delta'])) ?></span><?php endif; ?></button>
+          <?php endforeach; ?>
+        </div>
+        <div class="option-note" id="customNote" hidden></div>
+      </div>
+    <?php endif; ?>
+
     <?php if ($effectiveStock > 0 || $isPreorder): ?>
       <form class="js-add-cart" method="post" id="addCartForm">
         <input type="hidden" name="product_id" value="<?= (int)$product['id'] ?>">
         <?php if ($variants): ?><input type="hidden" name="variant_id" id="variantIdField" value=""><?php endif; ?>
+        <?php if ($customOpts): ?><input type="hidden" name="customization_id" id="customIdField" value=""><?php endif; ?>
         <div class="qty-row">
           <div class="qty-stepper">
             <button type="button" class="minus" aria-label="Decrease">−</button>
@@ -273,7 +289,7 @@ require __DIR__ . '/includes/header.php';
 </div>
 <?php endif; ?>
 
-<?php if ($variants): ?>
+<?php if ($variants || $customOpts): ?>
 <script>window.STORE_PRODUCT = <?= json_encode($pickerData, $jsonFlags) ?>;</script>
 <script src="/assets/js/product.js?v=<?= (int) @filemtime(__DIR__ . '/assets/js/product.js') ?>"></script>
 <?php endif; ?>

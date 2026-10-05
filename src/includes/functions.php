@@ -361,8 +361,10 @@ function variant_label(array $variant): string {
 function cart_items(): array {
     // A cart line's photo and weight follow the chosen options: the color's
     // (or else the size's) preview image, and the size's weight override.
-    $sql = 'SELECT c.id, c.quantity, c.variant_id, p.id AS product_id, p.name, p.slug, p.price, p.warranty_days,
-                   COALESCE(co.image, so.image, p.image_main) AS image_main,
+    $sql = 'SELECT c.id, c.quantity, c.variant_id, c.customization_id, p.id AS product_id, p.name, p.slug, p.price, p.warranty_days,
+                   COALESCE(cz.image, co.image, so.image, p.image_main) AS image_main,
+                   co.price_delta AS color_delta, so.price_delta AS size_delta,
+                   cz.name AS custom_name, cz.price_delta AS custom_delta, cz.is_active AS custom_active,
                    p.stock AS product_stock, p.is_active AS product_active, p.is_preorder, p.preorder_note, p.preorder_available_date,
                    COALESCE(so.weight_grams, p.weight_grams) AS weight_grams,
                    v.color AS variant_color, v.size AS variant_size, v.price_delta, v.stock AS variant_stock,
@@ -372,6 +374,7 @@ function cart_items(): array {
             LEFT JOIN product_variants v ON v.id = c.variant_id
             LEFT JOIN product_options co ON co.product_id = v.product_id AND co.kind = \'color\' AND co.name = v.color
             LEFT JOIN product_options so ON so.product_id = v.product_id AND so.kind = \'size\' AND so.name = v.size
+            LEFT JOIN product_customizations cz ON cz.id = c.customization_id AND cz.product_id = c.product_id
             WHERE %s ORDER BY c.id DESC';
     [$uid, $sid] = cart_identity();
     if ($uid) {
@@ -383,13 +386,16 @@ function cart_items(): array {
     }
     $rows = $stmt->fetchAll();
     foreach ($rows as &$r) {
-        $r['price'] = (float) $r['price'] + (float) ($r['price_delta'] ?? 0);
+        // Unit price = base + color extra + size extra + combination extra + customization extra.
+        $r['price'] = (float) $r['price'] + (float) ($r['price_delta'] ?? 0) + (float) ($r['color_delta'] ?? 0) + (float) ($r['size_delta'] ?? 0) + (float) ($r['custom_delta'] ?? 0);
         $r['stock'] = $r['variant_id'] ? (int) $r['variant_stock'] : (int) $r['product_stock'];
-        $r['available'] = $r['product_active'] && (!$r['variant_id'] || $r['variant_active']);
+        $r['available'] = $r['product_active'] && (!$r['variant_id'] || $r['variant_active']) && (!$r['customization_id'] || ($r['custom_name'] !== null && $r['custom_active']));
         // Pre-order is a product-level promise (not tracked per variant), so a variant line still
         // counts as a pre-order once its own stock is out, as long as the product allows it.
         $r['is_preorder'] = (bool) $r['is_preorder'] && $r['stock'] <= 0;
-        $r['variant_label'] = $r['variant_id'] ? variant_label(['color' => $r['variant_color'], 'size' => $r['variant_size']]) : null;
+        $label = $r['variant_id'] ? variant_label(['color' => $r['variant_color'], 'size' => $r['variant_size']]) : '';
+        if (!empty($r['custom_name'])) $label = ($label !== '' ? $label . ' · ' : '') . 'Custom: ' . $r['custom_name'];
+        $r['variant_label'] = $label !== '' ? $label : null;
     }
     unset($r);
     return $rows;
@@ -497,7 +503,7 @@ function shipping_fee_for_area(string $area, int $weightGrams): float {
     return $base + ($extraKg * shipcfg('extra_kg'));
 }
 
-function cart_add(int $productId, int $qty = 1, ?int $variantId = null, ?int $maxQty = null): void {
+function cart_add(int $productId, int $qty = 1, ?int $variantId = null, ?int $maxQty = null, ?int $customizationId = null): void {
     [$uid, $sid] = cart_identity();
     $qty = max(1, $qty);
     $pdo = db();
@@ -505,11 +511,11 @@ function cart_add(int $productId, int $qty = 1, ?int $variantId = null, ?int $ma
     // still matches an existing no-variant cart line rather than always
     // inserting a new row.
     if ($uid) {
-        $stmt = $pdo->prepare('SELECT id, quantity FROM cart_items WHERE user_id = ? AND product_id = ? AND variant_id <=> ?');
-        $stmt->execute([$uid, $productId, $variantId]);
+        $stmt = $pdo->prepare('SELECT id, quantity FROM cart_items WHERE user_id = ? AND product_id = ? AND variant_id <=> ? AND customization_id <=> ?');
+        $stmt->execute([$uid, $productId, $variantId, $customizationId]);
     } else {
-        $stmt = $pdo->prepare('SELECT id, quantity FROM cart_items WHERE session_id = ? AND product_id = ? AND variant_id <=> ?');
-        $stmt->execute([$sid, $productId, $variantId]);
+        $stmt = $pdo->prepare('SELECT id, quantity FROM cart_items WHERE session_id = ? AND product_id = ? AND variant_id <=> ? AND customization_id <=> ?');
+        $stmt->execute([$sid, $productId, $variantId, $customizationId]);
     }
     $row = $stmt->fetch();
     if ($row) {
@@ -519,8 +525,8 @@ function cart_add(int $productId, int $qty = 1, ?int $variantId = null, ?int $ma
         $upd = $pdo->prepare('UPDATE cart_items SET quantity = ? WHERE id = ?');
         $upd->execute([max(1, $newQty), $row['id']]);
     } else {
-        $ins = $pdo->prepare('INSERT INTO cart_items (user_id, session_id, product_id, variant_id, quantity) VALUES (?,?,?,?,?)');
-        $ins->execute([$uid, $uid ? null : $sid, $productId, $variantId, $maxQty !== null ? min($qty, $maxQty) : $qty]);
+        $ins = $pdo->prepare('INSERT INTO cart_items (user_id, session_id, product_id, variant_id, customization_id, quantity) VALUES (?,?,?,?,?,?)');
+        $ins->execute([$uid, $uid ? null : $sid, $productId, $variantId, $customizationId, $maxQty !== null ? min($qty, $maxQty) : $qty]);
     }
 }
 
@@ -565,18 +571,18 @@ function cart_clear(): void {
 /** Merge a guest session's cart into a user's cart after login. */
 function cart_merge_session_into_user(int $userId, string $sessionId): void {
     $pdo = db();
-    $stmt = $pdo->prepare('SELECT product_id, variant_id, quantity FROM cart_items WHERE session_id = ?');
+    $stmt = $pdo->prepare('SELECT product_id, variant_id, customization_id, quantity FROM cart_items WHERE session_id = ?');
     $stmt->execute([$sessionId]);
     foreach ($stmt->fetchAll() as $row) {
-        $existing = $pdo->prepare('SELECT id, quantity FROM cart_items WHERE user_id = ? AND product_id = ? AND variant_id <=> ?');
-        $existing->execute([$userId, $row['product_id'], $row['variant_id']]);
+        $existing = $pdo->prepare('SELECT id, quantity FROM cart_items WHERE user_id = ? AND product_id = ? AND variant_id <=> ? AND customization_id <=> ?');
+        $existing->execute([$userId, $row['product_id'], $row['variant_id'], $row['customization_id']]);
         $ex = $existing->fetch();
         if ($ex) {
             $pdo->prepare('UPDATE cart_items SET quantity = quantity + ? WHERE id = ?')
                 ->execute([$row['quantity'], $ex['id']]);
         } else {
-            $pdo->prepare('INSERT INTO cart_items (user_id, product_id, variant_id, quantity) VALUES (?,?,?,?)')
-                ->execute([$userId, $row['product_id'], $row['variant_id'], $row['quantity']]);
+            $pdo->prepare('INSERT INTO cart_items (user_id, product_id, variant_id, customization_id, quantity) VALUES (?,?,?,?,?)')
+                ->execute([$userId, $row['product_id'], $row['variant_id'], $row['customization_id'], $row['quantity']]);
         }
     }
     $pdo->prepare('DELETE FROM cart_items WHERE session_id = ?')->execute([$sessionId]);
@@ -908,6 +914,13 @@ function product_options_for(int $productId): array {
     return ['color' => array_values($out['color']), 'size' => array_values($out['size'])];
 }
 
+/** A product's customization choices (engraving, stitching…), in the admin's order. */
+function product_customizations_for(int $productId, bool $activeOnly = true): array {
+    $stmt = db()->prepare('SELECT * FROM product_customizations WHERE product_id = ?' . ($activeOnly ? ' AND is_active = 1' : '') . ' ORDER BY sort_order, id');
+    $stmt->execute([$productId]);
+    return $stmt->fetchAll();
+}
+
 /** Deletes an uploaded file, but only ever from inside the uploads folder. */
 function delete_upload_file(?string $urlPath): void {
     if (!$urlPath || strpos($urlPath, UPLOAD_URL . '/') !== 0) return;
@@ -982,3 +995,7 @@ require_once __DIR__ . '/erp/invoices.php';
 
 // The owner's time zone (Region & invoices) wins over the TZ default from .env.
 try { $__tz = get_setting('timezone', ''); if ($__tz && in_array($__tz, timezone_identifiers_list(), true)) date_default_timezone_set($__tz); } catch (Throwable $e) { /* settings table not there yet */ }
+
+// Maintenance mode (Admin → Store settings → Maintenance): shows the "Under Maintenance" page to visitors.
+require_once __DIR__ . '/maintenance.php';
+maintenance_gate();

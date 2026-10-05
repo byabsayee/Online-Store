@@ -182,8 +182,24 @@ CREATE TABLE IF NOT EXISTS product_options (
   height_mm INT DEFAULT NULL,
   width_mm INT DEFAULT NULL,
   depth_mm INT DEFAULT NULL,
+  price_delta DECIMAL(10,2) NOT NULL DEFAULT 0,
   sort_order INT NOT NULL DEFAULT 0,
   UNIQUE KEY uniq_option (product_id, kind, name),
+  FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Optional customization choices a shopper can add to a product (engraving, stitching…).
+-- Each has its own optional extra price and preview photo.
+CREATE TABLE IF NOT EXISTS product_customizations (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  product_id INT NOT NULL,
+  name VARCHAR(80) NOT NULL,
+  note VARCHAR(255) DEFAULT NULL,
+  price_delta DECIMAL(10,2) NOT NULL DEFAULT 0,
+  image VARCHAR(255) DEFAULT NULL,
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  sort_order INT NOT NULL DEFAULT 0,
+  UNIQUE KEY uniq_customization (product_id, name),
   FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -196,6 +212,7 @@ CREATE TABLE IF NOT EXISTS cart_items (
   session_id VARCHAR(64) DEFAULT NULL,
   product_id INT NOT NULL,
   variant_id INT DEFAULT NULL,
+  customization_id INT DEFAULT NULL,
   quantity INT NOT NULL DEFAULT 1,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,

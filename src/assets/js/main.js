@@ -117,10 +117,11 @@
       var productId = form.querySelector('[name=product_id]').value;
       var variantField = form.querySelector('[name=variant_id]');
       var variantId = variantField ? variantField.value : '';
+      var customField = form.querySelector('[name=customization_id]');
       var qtyField = form.querySelector('[name=quantity]');
       var qty = qtyField ? parseInt(qtyField.value, 10) || 1 : 1;
       if (btn) { btn.disabled = true; }
-      postJSON('/api/cart_add.php', { product_id: productId, variant_id: variantId || null, quantity: qty })
+      postJSON('/api/cart_add.php', { product_id: productId, variant_id: variantId || null, customization_id: customField && customField.value ? customField.value : null, quantity: qty })
         .then(function (res) {
           if (res.ok) {
             updateCartBadge(res.cart_count);
