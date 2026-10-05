@@ -44,8 +44,8 @@ function maintenance_render(array $m, bool $preview = false): void {
     $logoLight = function_exists('brand_logo') ? brand_logo() : null;
     $logoDark = $logoLight ? brand_logo_dark() : null;
     $name = store_name();
-    $wa = '';
-    try { $socials = store_socials(); $wa = $socials['whatsapp']['url'] ?? ''; } catch (Throwable $e) { /* optional */ }
+    $signal = '';
+    try { $socials = store_socials(); $signal = $socials['signal']['url'] ?? ''; } catch (Throwable $e) { /* optional */ }
     ?><!DOCTYPE html>
 <html lang="en">
 <head>
@@ -68,7 +68,7 @@ body { margin: 0; min-height: 100vh; min-height: 100dvh; display: flex; align-it
 .store { font-family: var(--font-title, Georgia, "Times New Roman", serif); font-size: 1.3rem; font-weight: 700; margin: 0 0 22px; }
 .icon { width: 76px; height: 76px; margin: 0 auto 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--accent); color: var(--on-accent); }
 .icon svg { width: 38px; height: 38px; }
-h1 { font-family: var(--font-title, Georgia, "Times New Roman", serif); font-size: clamp(1.6rem, 6vw, 2.1rem); line-height: 1.15; margin: 0 0 12px; }
+h1 { font-family: var(--font-display, Georgia, "Times New Roman", serif); font-size: clamp(1.6rem, 6vw, 2.1rem); line-height: 1.15; margin: 0 0 12px; }
 p { margin: 0 0 16px; color: var(--ink-soft); font-size: 1.02rem; white-space: pre-line; }
 .eta { display: inline-block; margin: 2px 0 6px; padding: 7px 16px; border-radius: 999px; border: 1px solid var(--line); font-weight: 600; font-size: .92rem; color: var(--ink); }
 .contact { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); font-size: .9rem; color: var(--ink-soft); }
@@ -84,7 +84,7 @@ p { margin: 0 0 16px; color: var(--ink-soft); font-size: 1.02rem; white-space: p
   <h1><?= e($m['title']) ?></h1>
   <p><?= e($m['message']) ?></p>
   <?php if ($m['eta'] !== ''): ?><div class="eta"><?= e($m['eta']) ?></div><?php endif; ?>
-  <?php if ($wa !== ''): ?><div class="contact">Need something urgent? <a href="<?= e($wa) ?>" rel="noopener">Message us on WhatsApp</a></div><?php endif; ?>
+  <?php if ($signal !== ''): ?><div class="contact">Need something urgent? <a href="<?= e($signal) ?>" rel="noopener">Message us on Signal</a></div><?php endif; ?>
 </main>
 </body>
 </html>
