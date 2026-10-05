@@ -17,9 +17,15 @@ try {
     if (in_array($c['status'], ['disabled', 'revoked', 'pending'], true)) exit(0);
     if (!erp_lock('worker', 0)) exit(0); // another worker run is still going
     try {
+        // Linked but the initial matching was never finished: do it now instead of holding every change back (switch off with the setting erp_auto_setup = 0).
+        if (erp_active() && !erp_setup_done() && get_setting('erp_auto_setup', '1') !== '0') {
+            [$ok, $m] = erp_auto_setup();
+            echo date('c') . ' auto-setup: ' . ($ok ? 'ok' : 'waiting') . ' - ' . $m . "\n";
+        }
         if (erp_active() && erp_setup_done()) {
             $stats = erp_flush(10);
             erp_backfill_invoices(20);
+            erp_backfill_staff(25);
             if ($stats['sent'] || $stats['failed'] || $stats['dead']) echo date('c') . " sent={$stats['sent']} failed={$stats['failed']} dead={$stats['dead']}\n";
             foreach (db()->query("SELECT id FROM sync_import_batches WHERE status = 'running' ORDER BY id")->fetchAll(PDO::FETCH_COLUMN) as $bid) erp_import_step((int) $bid, 50);
             $last = erp_last_reconcile();

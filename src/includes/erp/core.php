@@ -14,12 +14,12 @@ const ERP_MODULE_VERSION = '1.0.0';
 const ERP_API_VERSION = 'v1';
 /** What this store can do. The handshake exchanges these; unknown ones are ignored by the peer. */
 const ERP_CAPABILITIES = ['categories', 'products', 'variants', 'stock', 'customers', 'orders', 'payments',
-    'payment_methods', 'coupons', 'taxes', 'delivery_charges', 'returns', 'snapshot', 'changes', 'reconcile'];
-const ERP_ENTITIES = ['category', 'product', 'customer', 'order', 'payment', 'payment_method', 'stock_movement', 'coupon', 'tax', 'delivery_charge', 'return'];
+    'payment_methods', 'coupons', 'taxes', 'delivery_charges', 'returns', 'snapshot', 'changes', 'reconcile', 'staff'];
+const ERP_ENTITIES = ['category', 'product', 'customer', 'order', 'payment', 'payment_method', 'stock_movement', 'coupon', 'tax', 'delivery_charge', 'return', 'staff'];
 const ERP_OPS = ['create', 'update', 'archive', 'restore', 'cancel', 'void'];
 /** scope => entities it covers (a connection can be limited to some of them). */
 const ERP_SCOPE_ENTITIES = [
-    'catalog' => ['category', 'product'], 'stock' => ['stock_movement'], 'customers' => ['customer'],
+    'catalog' => ['category', 'product'], 'stock' => ['stock_movement'], 'customers' => ['customer', 'staff'],
     'orders' => ['order', 'return'], 'payments' => ['payment', 'payment_method'], 'money' => ['coupon', 'tax', 'delivery_charge'],
 ];
 const ERP_TS_WINDOW = 300; // seconds of allowed clock skew

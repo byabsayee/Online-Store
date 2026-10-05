@@ -300,3 +300,13 @@ function erp_attention_count(): int {
     }
     return $n;
 }
+
+/** Announces staff accounts the book has not heard about yet (a few per worker pass; linking an existing store needs no manual step). */
+function erp_backfill_staff(int $limit = 25): int {
+    if (!erp_active() || !erp_setup_done() || !erp_scope_allows('staff')) return 0;
+    $st = db()->prepare("SELECT a.id FROM admins a WHERE NOT EXISTS (SELECT 1 FROM sync_links l WHERE l.connection_id = ? AND l.entity = 'staff' AND l.local_id = a.id AND l.last_payload IS NOT NULL) ORDER BY a.id LIMIT " . (int) $limit);
+    $st->execute([erp_connection_id()]);
+    $n = 0;
+    foreach ($st->fetchAll(PDO::FETCH_COLUMN) as $id) if (erp_emit('staff', (int) $id, 'create')) $n++;
+    return $n;
+}

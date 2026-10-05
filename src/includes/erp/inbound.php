@@ -129,7 +129,7 @@ function erp_inbound_batch(array $body): array {
 
 /** entity => [table, extra WHERE] for the snapshot listing. */
 const ERP_SNAPSHOT_TABLES = [
-    'category' => ['categories', ''], 'product' => ['products', ''], 'customer' => ['sync_customers', ''], 'order' => ['orders', ''],
+    'category' => ['categories', ''], 'product' => ['products', ''], 'customer' => ['sync_customers', ''], 'staff' => ['admins', ''], 'order' => ['orders', ''],
     'payment' => ['order_payments', ''], 'payment_method' => ['payment_methods', ''], 'coupon' => ['coupons', ''], 'return' => ['order_returns', ''],
 ];
 

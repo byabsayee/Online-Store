@@ -41,6 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         case 'retry': erp_outbox_retry((int) ($_POST['id'] ?? 0)); $go('queue');
         case 'retry_all': $n = erp_outbox_retry_all_dead(); flash_set('success', $n . ' event(s) queued again.'); $go('queue');
         case 'discard': erp_outbox_discard((int) ($_POST['id'] ?? 0)); $go('queue');
+        case 'auto_setup': [$ok, $m] = erp_auto_setup(); if ($ok) admin_log('erp.setup', 'Automatic setup finished'); flash_set($ok ? 'success' : 'error', $m); $go($ok ? 'overview' : 'setup');
         case 'scan': [$ok, $m] = erp_initial_scan(); flash_set($ok ? 'success' : 'error', $m); $go('setup');
         case 'match': flash_set('info', erp_match_resolve((int) ($_POST['id'] ?? 0), (string) ($_POST['choice'] ?? ''))); $go('setup');
         case 'match_bulk':
@@ -136,7 +137,7 @@ $tabs = ['overview' => 'Overview', 'setup' => 'Setup review', 'queue' => 'Sync q
           Fix: <em>Disconnect</em> below, generate a new pairing code in Byabsayee, and connect again — your records and their matches are kept, so nothing is duplicated.</div>
       <?php endif; ?>
       <?php if ($status === 'verifying'): ?><p>The book is checking that this domain is yours. This page updates once it finishes — reload in a few seconds.</p><?php endif; ?>
-      <?php if ($status === 'active' && !erp_setup_done()): ?><div class="alert alert-info"><strong>One more step:</strong> review how the two catalogs line up before anything syncs. <a href="<?= $self ?>?tab=setup">Open the setup review →</a></div><?php endif; ?>
+      <?php if ($status === 'active' && !erp_setup_done()): ?><div class="alert alert-info"><strong>One more step:</strong> the two catalogs still need to be matched before anything syncs. This runs automatically within a minute, or <form method="post" style="display:inline"><?= csrf_field() ?><input type="hidden" name="action" value="auto_setup"><button class="btn btn-primary">match everything now</button></form> &middot; <a href="<?= $self ?>?tab=setup">review it item by item →</a></div><?php endif; ?>
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
         <?php if ($status === 'active'): ?><form method="post"><?= csrf_field() ?><input type="hidden" name="action" value="pause"><button class="btn btn-outline">Pause sync</button></form>
         <?php elseif ($status === 'paused'): ?><form method="post"><?= csrf_field() ?><input type="hidden" name="action" value="resume"><button class="btn btn-primary">Resume sync</button></form><?php endif; ?>

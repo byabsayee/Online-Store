@@ -13,7 +13,7 @@ function erp_mapper(string $entity): string {
     static $map = [
         'category' => 'ErpMapCategory', 'product' => 'ErpMapProduct', 'variant' => 'ErpMapVariant', 'customer' => 'ErpMapCustomer',
         'order' => 'ErpMapOrder', 'payment' => 'ErpMapPayment', 'payment_method' => 'ErpMapPaymentMethod', 'stock_movement' => 'ErpMapStock',
-        'coupon' => 'ErpMapCoupon', 'tax' => 'ErpMapTax', 'delivery_charge' => 'ErpMapDelivery', 'return' => 'ErpMapReturn',
+        'coupon' => 'ErpMapCoupon', 'tax' => 'ErpMapTax', 'delivery_charge' => 'ErpMapDelivery', 'return' => 'ErpMapReturn', 'staff' => 'ErpMapStaff',
     ];
     if (!isset($map[$entity])) throw new InvalidArgumentException('Unknown entity ' . $entity);
     return $map[$entity];

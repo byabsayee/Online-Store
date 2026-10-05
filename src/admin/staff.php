@@ -17,6 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $to = $t['status'] === 'active' ? 'disabled' : 'active';
             db()->prepare('UPDATE admins SET status = ? WHERE id = ?')->execute([$to, $t['id']]);
+            if (function_exists('erp_emit')) erp_emit('staff', (int) $t['id']);
             admin_log($to === 'disabled' ? 'staff.disable' : 'staff.enable', ($to === 'disabled' ? 'Disabled' : 'Re-enabled') . ' the account of ' . $t['name'] . ' (@' . $t['username'] . ')', 'staff', (int) $t['id']);
             flash_set('success', $t['name'] . '\'s account is now ' . ($to === 'disabled' ? 'disabled — they can no longer sign in.' : 'active again.'));
         }

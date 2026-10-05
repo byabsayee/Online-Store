@@ -65,6 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($doc) { staff_save_document($targetId, $doc, (int) $me['id']); $docChange = $editing && staff_document_meta($targetId) ? 'replaced' : 'added'; }
                 elseif ($editing && !empty($_POST['remove_document']) && staff_document_meta($targetId)) { staff_delete_document($targetId); $docChange = 'removed'; }
                 $pdo->commit();
+                if (function_exists('erp_emit')) erp_emit('staff', $targetId, $editing ? 'auto' : 'create');   // profile only, never the password
             } catch (Throwable $ex) {
                 if ($pdo->inTransaction()) $pdo->rollBack();
                 error_log('[staff_form] ' . $ex->getMessage());

@@ -614,3 +614,66 @@ class ErpMapReturn extends ErpMap {
         catch (RuntimeException $e) { throw new ErpConflictResult('other', $e->getMessage(), null, $f); }
     }
 }
+
+/* -------------------------------------------------------------- staff --- */
+
+/**
+ * Staff accounts (table admins) <-> the book's employees. Profile only: name, email, phone, address, active.
+ * Passwords, roles, ID numbers, photos and documents never travel. A person the book announces who has no account
+ * here gets one that is DISABLED with an unknown random password: an owner enables it and sets a password
+ * (Admin > Staff) when that person should really sign in. Owners are never created, demoted or disabled by sync.
+ */
+class ErpMapStaff extends ErpMap {
+    public static function accepts(): array { return ['name', 'email', 'phone', 'address', 'is_active']; }
+    public static function cancelFields(): array { return ['is_active' => false]; }
+    public static function build(int $id): ?array {
+        $st = db()->prepare('SELECT name, email, phone, address, status FROM admins WHERE id = ?'); $st->execute([$id]);
+        $a = $st->fetch(); if (!$a) return null;
+        return ['name' => $a['name'], 'email' => $a['email'] ? strtolower(trim((string) $a['email'])) : null, 'phone' => $a['phone'], 'address' => $a['address'], 'is_active' => $a['status'] === 'active'];
+    }
+    /** The same person already has an account here? Email first, then phone (digits compared, so formatting does not matter). */
+    public static function findMatch(?string $phone, ?string $email): ?array {
+        $pdo = db();
+        if ($email) { $st = $pdo->prepare('SELECT * FROM admins WHERE LOWER(email) = ? LIMIT 1'); $st->execute([strtolower(trim($email))]); if ($r = $st->fetch()) return $r; }
+        $norm = erp_phone_norm($phone);
+        if ($norm) foreach ($pdo->query("SELECT * FROM admins WHERE phone IS NOT NULL AND phone <> ''")->fetchAll() as $r) if (erp_phone_norm($r['phone']) === $norm) return $r;
+        return null;
+    }
+    private static function newUsername(string $email, string $name): string {
+        $base = substr((string) slugify($email !== '' ? (string) strstr($email, '@', true) : $name), 0, 40);
+        if ($base === '') $base = 'staff';
+        $pdo = db(); $u = $base; $n = 1;
+        while (true) { $st = $pdo->prepare('SELECT 1 FROM admins WHERE username = ?'); $st->execute([$u]); if (!$st->fetchColumn()) return $u; $u = $base . '-' . (++$n); }
+    }
+    public static function apply(string $op, ?int $id, array $f, array $ctx): ?int {
+        $pdo = db();
+        if ($op === 'archive' || $op === 'restore') {
+            if ($id) $pdo->prepare("UPDATE admins SET status = ? WHERE id = ? AND role <> 'owner'")->execute([$op === 'archive' ? 'disabled' : 'active', $id]);
+            return $id;
+        }
+        $f = self::pick($f, self::accepts());
+        if (!$id) {
+            $email = isset($f['email']) && $f['email'] !== '' ? strtolower(trim((string) $f['email'])) : null;
+            if ($m = self::findMatch($f['phone'] ?? null, $email)) { $id = (int) $m['id']; }   // same person: link, never duplicate
+            else {
+                self::req($f, 'name');
+                $pdo->prepare("INSERT INTO admins (username, name, password_hash, role, phone, email, address, status, must_change_password) VALUES (?,?,?,'staff',?,?,?,'disabled',1)")
+                    ->execute([self::newUsername((string) $email, (string) $f['name']), self::str($f['name'], 120), password_hash(bin2hex(random_bytes(24)), PASSWORD_DEFAULT),
+                        self::str($f['phone'] ?? null, 40), $email, self::str($f['address'] ?? null, 500)]);
+                return (int) $pdo->lastInsertId();
+            }
+        }
+        $set = []; $v = [];
+        if (isset($f['name'])) { $set[] = 'name = ?'; $v[] = self::str($f['name'], 120) ?? 'Staff'; }
+        if (array_key_exists('email', $f)) {
+            $email = $f['email'] ? strtolower(trim((string) $f['email'])) : null;
+            $dup = $pdo->prepare('SELECT 1 FROM admins WHERE LOWER(email) = ? AND id <> ?'); $dup->execute([(string) $email, $id]);
+            if ($email === null || !$dup->fetchColumn()) { $set[] = 'email = ?'; $v[] = $email; }   // never break the unique email rule
+        }
+        if (array_key_exists('phone', $f)) { $set[] = 'phone = ?'; $v[] = self::str($f['phone'], 40); }
+        if (array_key_exists('address', $f)) { $set[] = 'address = ?'; $v[] = self::str($f['address'], 500); }
+        if (array_key_exists('is_active', $f)) { $set[] = "status = IF(role = 'owner', status, ?)"; $v[] = self::bool($f['is_active']) ? 'active' : 'disabled'; }
+        if ($set) { $v[] = $id; $pdo->prepare('UPDATE admins SET ' . implode(', ', $set) . ' WHERE id = ?')->execute($v); }
+        return $id;
+    }
+}

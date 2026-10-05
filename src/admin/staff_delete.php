@@ -16,6 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         // The document goes with them (foreign key). Their past activity-log entries stay, under the name they had.
         db()->prepare('DELETE FROM admins WHERE id = ?')->execute([$t['id']]);
+        if (function_exists('erp_emit')) erp_emit('staff', (int) $t['id'], 'archive');
         admin_log('staff.delete', 'Deleted the account of ' . $t['name'] . ' (@' . $t['username'] . ', ' . $t['role'] . ')', 'staff', (int) $t['id'], ['username' => $t['username'], 'role' => $t['role']]);
         flash_set('success', $t['name'] . ' was deleted.');
     }

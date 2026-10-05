@@ -310,6 +310,32 @@ function erp_finish_setup(): array {
     return [true, 'Setup finished. ' . $queued . ' item(s) are being sent to the book.'];
 }
 
+/**
+ * Runs the whole setup review without anyone clicking through it, so linking never leaves the store
+ * silently holding back every change. The book is the source of truth for catalog data:
+ *   exact matches (SKU / category name / phone / email) are linked, items that exist only at the book are created here,
+ *   items that exist only here are pushed to the book. Anything that cannot be created is left out and counted in the log.
+ * Safe to call repeatedly (the worker does, until setup is finished). Returns [ok, message].
+ */
+function erp_auto_setup(): array {
+    if (!erp_active()) return [false, 'Link the store first.'];
+    if (erp_setup_done()) return [true, 'Already finished.'];
+    if (!erp_lock('autosetup', 0)) return [false, 'Automatic setup is already running.'];
+    try {
+        [$ok, $msg] = erp_initial_scan();
+        if (!$ok) return [false, $msg];
+        $linked = erp_match_bulk('', 'sku_match', 'link');
+        $created = erp_match_bulk('', 'remote_only', 'create');
+        $pushed = erp_match_bulk('', 'local_only', 'push');
+        // Whatever is still pending could not be created (for example a record the store refuses as invalid): do not let it block syncing for everyone else.
+        $skipped = (int) db()->exec("UPDATE sync_match_items SET status = 'ignored' WHERE status = 'pending' AND local_id IS NULL");
+        $left = erp_match_pending_count();
+        erp_log('system', 'setup', "Automatic setup: linked $linked, created $created, pushing $pushed, skipped $skipped.", true);
+        if ($left > 0) return [false, $left . ' item(s) still need a decision on the Setup review page.'];
+        return erp_finish_setup();
+    } finally { erp_unlock('autosetup'); }
+}
+
 /** Resolves a customer-match conflict: 'link' the incoming customer to the existing one, or keep them as 'separate' people. */
 function erp_resolve_customer_match(int $conflictId, string $action, string $by): string {
     $st = db()->prepare("SELECT * FROM sync_conflicts WHERE id = ? AND kind = 'customer_match' AND status = 'open'"); $st->execute([$conflictId]);
