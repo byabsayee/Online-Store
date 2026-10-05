@@ -164,13 +164,8 @@ function register_user(string $name, string $email, string $password, string $ph
 function send_verification_email(int $userId, string $name, string $email, string $token): bool {
     require_once __DIR__ . '/mail.php';
     $link = mail_base_url() . '/verify-email?uid=' . $userId . '&token=' . $token;
-    $bg = theme_settings()['primary'];
-    $body = '<p>Hi ' . e(explode(' ', $name)[0]) . ',</p>'
-        . '<p>Welcome to ' . e(store_name()) . '! Please confirm your email address to activate your account. Any orders you placed earlier as a guest with this email will be added to your account once it\'s confirmed.</p>'
-        . '<p style="margin:24px 0;"><a href="' . e($link) . '" style="background:' . e($bg) . ';color:' . e(contrast_text($bg)) . ';padding:11px 22px;border-radius:6px;text-decoration:none;font-weight:bold;">Verify my email</a></p>'
-        . '<p class="muted" style="font-size:0.85rem;color:#8791a6;">Or paste this link into your browser:<br>' . e($link) . '</p>'
-        . '<p class="muted" style="font-size:0.85rem;color:#8791a6;">The link works for 7 days. If you didn\'t create this account you can ignore this email.</p>';
-    return send_email($email, $name, 'Verify your email — ' . store_name(), email_wrap('Confirm your email address', $body), null, null, 'verify');
+    [$subject, $html] = email_render('verify', ['first_name' => email_first_name($name), 'link' => e($link), 'button' => ['href' => $link]]);
+    return send_email($email, $name, $subject, $html, null, null, 'verify');
 }
 
 /** Issues a fresh token and resends the verification email (rate-limited to once per 2 minutes). */
@@ -227,13 +222,8 @@ function request_password_reset(string $email): void {
     defer_job(function () use ($u, $uid, $token) {
         require_once __DIR__ . '/mail.php';
         $link = mail_base_url() . '/reset-password?uid=' . $uid . '&token=' . $token;
-        $bg = theme_settings()['primary'];
-        $body = '<p>Hi ' . e(explode(' ', $u['name'])[0]) . ',</p>'
-            . '<p>We got a request to reset the password for your ' . e(store_name()) . ' account. The link below works for one hour.</p>'
-            . '<p style="margin:24px 0;"><a href="' . e($link) . '" style="background:' . e($bg) . ';color:' . e(contrast_text($bg)) . ';padding:11px 22px;border-radius:6px;text-decoration:none;font-weight:bold;">Choose a new password</a></p>'
-            . '<p class="muted" style="font-size:0.85rem;color:#8791a6;">Or paste this link into your browser:<br>' . e($link) . '</p>'
-            . '<p class="muted" style="font-size:0.85rem;color:#8791a6;">If you didn\'t ask for this, ignore this email — your password stays the same.</p>';
-        send_email($u['email'], $u['name'], 'Reset your password — ' . store_name(), email_wrap('Reset your password', $body), null, null, 'password-reset');
+        [$subject, $html] = email_render('password_reset', ['first_name' => email_first_name((string) $u['name']), 'link' => e($link), 'button' => ['href' => $link]]);
+        send_email($u['email'], $u['name'], $subject, $html, null, null, 'password-reset');
     });
 }
 

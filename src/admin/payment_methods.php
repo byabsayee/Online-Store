@@ -79,7 +79,6 @@ $presets = [
     'nagad' => ['Nagad', 'Send the total with “Send Money” to the number above, then enter the number you sent from and the transaction ID below.'],
     'upay' => ['Upay', 'Send the total to the Upay number above, then enter the number you sent from and the transaction ID below.'],
     'bank' => ['Bank transfer', 'Transfer the total to the account above and enter the sender name/number and the transaction reference below.'],
-    'card' => ['Card payment', 'Pay by card using the link or terminal we give you after you place the order. Enter the reference you receive.'],
 ];
 $pre = (!$edit && isset($presets[$_GET['preset'] ?? ''])) ? $presets[$_GET['preset']] : null;
 $pageTitle = 'Payment methods';

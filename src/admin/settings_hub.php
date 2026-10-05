@@ -11,6 +11,7 @@ $desc = [
     'branding.php' => 'Logo, favicon, share image and link-preview text',
     'theme_settings.php' => 'Colours and seasonal effects',
     'fonts.php' => 'Title, primary and secondary fonts — upload or Google Fonts',
+    'email_templates.php' => 'Edit every email the store sends — sign-up, password reset, order emails and owner alerts',
     'pages.php' => 'About, FAQ, policies, home page text, cookie notice',
     'footer_links.php' => 'Footer link columns, credit line and source-code link',
     'partners.php' => 'A public page promoting your partners',

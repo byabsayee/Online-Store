@@ -31,8 +31,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($section === 'store') {
-        $email = trim($_POST['store_email'] ?? '');
-        if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = 'The store email address doesn\'t look right.';
         if (trim($_POST['store_name'] ?? '') === '') $errors[] = 'The store name can\'t be empty.';
         $links = [];
         foreach (['facebook' => 'Facebook page', 'messenger' => 'Messenger', 'instagram' => 'Instagram', 'youtube' => 'YouTube', 'tiktok' => 'TikTok'] as $k => $label) {
@@ -48,28 +46,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $sig = signal_link_normalize((string) ($_POST['social_signal'] ?? ''));
         if ($sig === null) $errors[] = 'Signal: enter a signal.me link or just the phone number, or leave it empty to hide it.';
         else $links['signal'] = $sig;
-        foreach (['store_phone' => 'The phone number', 'store_phone2' => 'The second phone number'] as $pk => $plabel) {
-            $pv = trim($_POST[$pk] ?? '');
-            if ($pv !== '' && !preg_match('/^\+?[\d\s().-]{5,40}$/', $pv)) $errors[] = $plabel . ' should only contain digits, spaces, + ( ) - or a dot.';
-        }
         if (!$errors) {
             $before = store_info();
             $beforeSocial = array_map(fn ($x) => $x['url'], store_socials());
             set_setting('store_name', mb_substr(trim($_POST['store_name'] ?? ''), 0, 80));
             set_setting('store_tagline', mb_substr(trim($_POST['store_tagline'] ?? ''), 0, 80));
-            set_setting('store_phone', mb_substr(trim($_POST['store_phone'] ?? ''), 0, 40));
-            set_setting('store_phone2', mb_substr(trim($_POST['store_phone2'] ?? ''), 0, 40));
-            set_setting('store_email', $email);
-            set_setting('store_address', mb_substr(trim(str_replace("\r", '', $_POST['store_address'] ?? '')), 0, 300));
             foreach ($links as $k => $u) set_setting('social_' . $k, mb_substr($u, 0, 255));
-            $oldV = ['name' => $before['name'], 'tagline' => $before['tagline'], 'phone' => $before['phone'], 'phone2' => $before['phone2'], 'email' => $before['email'], 'address' => $before['address']];
-            $newV = ['name' => trim($_POST['store_name'] ?? ''), 'tagline' => trim($_POST['store_tagline'] ?? ''), 'phone' => trim($_POST['store_phone'] ?? ''), 'phone2' => trim($_POST['store_phone2'] ?? ''),
-                     'email' => $email, 'address' => trim(str_replace("\r", '', $_POST['store_address'] ?? ''))];
-            $labels = ['name' => 'Store name', 'tagline' => 'Tagline', 'phone' => 'Phone', 'phone2' => 'Second phone', 'email' => 'Email', 'address' => 'Address'];
+            $oldV = ['name' => $before['name'], 'tagline' => $before['tagline']];
+            $newV = ['name' => trim($_POST['store_name'] ?? ''), 'tagline' => trim($_POST['store_tagline'] ?? '')];
+            $labels = ['name' => 'Store name', 'tagline' => 'Tagline'];
             foreach ($links as $k => $u) { $oldV['social_' . $k] = $beforeSocial[$k] ?? ''; $newV['social_' . $k] = $u; $labels['social_' . $k] = ucfirst($k) . ' link'; }
             $diff = admin_log_diff($oldV, $newV, $labels);
             admin_log('settings.store', 'Edited store details' . ($diff ? ': ' . admin_log_diff_summary($diff) : ' (saved, nothing changed)'), null, null, $diff ? ['changes' => $diff] : []);
-            flash_set('success', 'Store details saved — they now show across the whole site: header, footer, contact page, legal pages, emails and invoices.');
+            flash_set('success', 'Store details saved — they now show across the whole site.');
             redirect('/admin/settings.php#store');
         }
     }
@@ -201,14 +190,7 @@ require __DIR__ . '/includes/header.php';
       <div class="field"><label for="store_name">Store name</label><input type="text" id="store_name" name="store_name" value="<?= e($section === 'store' ? ($_POST['store_name'] ?? '') : $store['name']) ?>" maxlength="80" required></div>
       <div class="field"><label for="store_tagline">Tagline <span class="muted" style="font-weight:400;">(optional)</span></label><input type="text" id="store_tagline" name="store_tagline" value="<?= e($section === 'store' ? ($_POST['store_tagline'] ?? '') : $store['tagline']) ?>" maxlength="80" placeholder="EDC gear, bags &amp; leather goods"><div class="hint">Shown in the homepage's browser-tab title: “<?= e($store['name']) ?> — tagline”.</div></div>
     </div>
-    <div class="field-row">
-      <div class="field"><label for="store_phone">Phone number</label><input type="text" id="store_phone" name="store_phone" value="<?= e($section === 'store' ? ($_POST['store_phone'] ?? '') : $store['phone']) ?>" maxlength="40" placeholder="+880 1XXX-XXXXXX"></div>
-      <div class="field"><label for="store_phone2">Second phone number <span class="muted" style="font-weight:400;">(optional)</span></label><input type="text" id="store_phone2" name="store_phone2" value="<?= e($section === 'store' ? ($_POST['store_phone2'] ?? '') : $store['phone2']) ?>" maxlength="40" placeholder="+880 1XXX-XXXXXX"><div class="hint">Shown next to the main number in the footer, contact page and invoices. Leave empty to hide.</div></div>
-    </div>
-    <div class="field-row">
-      <div class="field"><label for="store_email">Email</label><input type="email" id="store_email" name="store_email" value="<?= e($section === 'store' ? ($_POST['store_email'] ?? '') : $store['email']) ?>"><div class="hint">Also where messages from the contact form are delivered.</div></div>
-    </div>
-    <div class="field"><label for="store_address">Address</label><textarea id="store_address" name="store_address" rows="3" maxlength="300" placeholder="House, road, area&#10;City"><?= e($section === 'store' ? ($_POST['store_address'] ?? '') : $store['address']) ?></textarea></div>
+    <p class="help" style="margin:0 0 18px;">Phone numbers, email addresses and addresses (with Google Maps links) are edited in one place: <a href="/admin/contacts.php" style="text-decoration:underline;font-weight:600;">Addresses &amp; contacts</a>.</p>
 
     <h3 class="subhead">Social links</h3>
     <p class="help">Shown as icons in the footer, mobile menu and contact page. Leave one empty to hide it.</p>

@@ -44,16 +44,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!preg_match('/^\+?[\d\s().-]{5,25}$/', $r['p_number'])) { $errors[] = '“' . $r['p_number'] . '” does not look like a phone number.'; continue; }
         $cleanPh[] = ['label' => mb_substr($r['p_label'], 0, 40), 'number' => $r['p_number']];
     }
+    $mainPhone = mb_substr(trim((string) ($_POST['main_phone'] ?? '')), 0, 40);
+    if ($mainPhone !== '' && !preg_match('/^\+?[\d\s().-]{5,40}$/', $mainPhone)) $errors[] = 'The main phone number should only contain digits, spaces, + ( ) - or a dot.';
+    $mainEmail = trim((string) ($_POST['main_email'] ?? ''));
+    if ($mainEmail !== '' && !filter_var($mainEmail, FILTER_VALIDATE_EMAIL)) $errors[] = 'The main email address doesn\'t look right.';
+    $mainAddress = mb_substr(trim(str_replace("\r", '', (string) ($_POST['main_address'] ?? ''))), 0, 300);
     $mainMap = trim((string) ($_POST['main_map'] ?? ''));
     if ($mainMap !== '' && map_link_clean($mainMap) === '') $errors[] = 'The map link for the main address must be a full https:// address.';
 
     if (!$errors) {
+        $before = store_info();
+        set_setting('store_phone', $mainPhone);
+        set_setting('store_phone2', '');   // the old "second phone" now lives in the list below
+        set_setting('store_email', $mainEmail);
+        set_setting('store_address', $mainAddress);
         set_setting('store_address_label', mb_substr(trim((string) ($_POST['main_label'] ?? '')), 0, 40));
         set_setting('store_address_map', $mainMap);
         set_setting('contact_addresses', json_encode($cleanAd, JSON_UNESCAPED_UNICODE));
         set_setting('contact_emails', json_encode($cleanEm, JSON_UNESCAPED_UNICODE));
         set_setting('contact_phones', json_encode($cleanPh, JSON_UNESCAPED_UNICODE));
-        admin_log('settings.contacts', 'Updated addresses, emails and phone numbers');
+        $ch = admin_log_diff(['phone' => $before['phone'], 'email' => $before['email'], 'address' => $before['address']], ['phone' => $mainPhone, 'email' => $mainEmail, 'address' => $mainAddress], ['phone' => 'Main phone', 'email' => 'Main email', 'address' => 'Main address']);
+        admin_log('settings.contacts', 'Updated addresses, emails and phone numbers' . ($ch ? ': ' . admin_log_diff_summary($ch) : ''), null, null, $ch ? ['changes' => $ch] : []);
         flash_set('success', 'Saved.');
         redirect('/admin/contacts.php');
     }
@@ -64,6 +75,7 @@ $val = fn (string $k, array $r, string $f, string $d = '') => e($_SERVER['REQUES
 $exAd = $_SERVER['REQUEST_METHOD'] === 'POST' ? [] : contact_extras('contact_addresses');
 $exEm = $_SERVER['REQUEST_METHOD'] === 'POST' ? [] : contact_extras('contact_emails');
 $exPh = $_SERVER['REQUEST_METHOD'] === 'POST' ? [] : contact_extras('contact_phones');
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' && $store['phone2'] !== '') array_unshift($exPh, ['label' => '', 'number' => $store['phone2']]); // old "second phone"
 if ($_SERVER['REQUEST_METHOD'] === 'POST') { // keep what was typed when validation failed
     foreach (($_POST['a_text'] ?? []) as $i => $t) $exAd[] = ['label' => $_POST['a_label'][$i] ?? '', 'text' => $t, 'map' => $_POST['a_map'][$i] ?? ''];
     foreach (($_POST['e_email'] ?? []) as $i => $t) $exEm[] = ['label' => $_POST['e_label'][$i] ?? '', 'email' => $t];
@@ -76,10 +88,10 @@ foreach ($errors as $er) echo '<div class="alert alert-error">' . e($er) . '</di
 ?>
 <form method="post" id="contactsForm"><?= csrf_field() ?>
 <section class="panel"><div class="panel-head"><h2>Addresses</h2></div><div class="panel-body">
-  <p class="help" style="margin-top:0;">Shown in the footer and on the contact page, each with an optional <strong>Open in Google Maps</strong> link. The main address is edited under <a class="link" href="/admin/settings.php">Details &amp; email</a>; add its label and map link here.</p>
+  <p class="help" style="margin-top:0;">Shown in the footer, on the contact page and on invoices, each with an optional <strong>Open in Google Maps</strong> link. The first one is your main address.</p>
   <div class="field-row">
-    <div class="field"><label>Main address <span class="muted" style="font-weight:400;">(from Details &amp; email)</span></label><input value="<?= e(str_replace("\n", ', ', $store['address'])) ?>" disabled></div>
-    <div class="field"><label for="main_label">Label</label><input id="main_label" name="main_label" maxlength="40" placeholder="Head office" value="<?= e($_POST['main_label'] ?? get_setting('store_address_label', '')) ?>"></div>
+    <div class="field" style="flex:2;"><label for="main_address">Main address</label><textarea id="main_address" name="main_address" rows="3" maxlength="300" placeholder="House, road, area&#10;City"><?= e($_POST['main_address'] ?? $store['address']) ?></textarea></div>
+    <div class="field"><label for="main_label">Label <span class="muted" style="font-weight:400;">(optional)</span></label><input id="main_label" name="main_label" maxlength="40" placeholder="Head office" value="<?= e($_POST['main_label'] ?? get_setting('store_address_label', '')) ?>"></div>
     <div class="field"><label for="main_map">Google Maps link</label><input id="main_map" name="main_map" type="url" placeholder="https://maps.app.goo.gl/…" value="<?= e($_POST['main_map'] ?? get_setting('store_address_map', '')) ?>"></div>
   </div>
   <div id="rows-a"><?php foreach ($exAd as $r): ?>
@@ -93,7 +105,7 @@ foreach ($errors as $er) echo '<div class="alert alert-error">' . e($er) . '</di
 </div></section>
 
 <section class="panel"><div class="panel-head"><h2>Email addresses</h2></div><div class="panel-body">
-  <p class="help" style="margin-top:0;">The main email (also where contact-form messages arrive) is in <a class="link" href="/admin/settings.php">Details &amp; email</a>: <strong><?= e($store['email'] ?: 'not set') ?></strong>. Add more, such as sales or support, here.</p>
+  <div class="field"><label for="main_email">Main email</label><input id="main_email" name="main_email" type="email" value="<?= e($_POST['main_email'] ?? $store['email']) ?>"><div class="hint">Messages from the contact form are delivered here, and it is the "reply to" address on customer emails. Add more addresses (sales, support…) below.</div></div>
   <div id="rows-e"><?php foreach ($exEm as $r): ?>
     <div class="field-row crow"><div class="field"><label>Label</label><input name="e_label[]" maxlength="40" placeholder="Support" value="<?= e($r['label'] ?? '') ?>"></div>
       <div class="field" style="flex:2;"><label>Email</label><input name="e_email[]" type="email" value="<?= e($r['email'] ?? '') ?>"></div>
@@ -103,7 +115,8 @@ foreach ($errors as $er) echo '<div class="alert alert-error">' . e($er) . '</di
 </div></section>
 
 <section class="panel"><div class="panel-head"><h2>Phone numbers</h2></div><div class="panel-body">
-  <p class="help" style="margin-top:0;">The main and second numbers are in <a class="link" href="/admin/settings.php">Details &amp; email</a>. Add more here (for example one per branch or a WhatsApp line).</p>
+  <div class="field"><label for="main_phone">Main phone number</label><input id="main_phone" name="main_phone" maxlength="40" placeholder="+880 1XXX-XXXXXX" value="<?= e($_POST['main_phone'] ?? $store['phone']) ?>"></div>
+  <p class="help" style="margin-top:0;">Add more numbers below (one per branch, a WhatsApp line…).</p>
   <div id="rows-p"><?php foreach ($exPh as $r): ?>
     <div class="field-row crow"><div class="field"><label>Label</label><input name="p_label[]" maxlength="40" placeholder="Sales" value="<?= e($r['label'] ?? '') ?>"></div>
       <div class="field" style="flex:2;"><label>Number</label><input name="p_number[]" maxlength="25" placeholder="+880 1XXX-XXXXXX" value="<?= e($r['number'] ?? '') ?>"></div>

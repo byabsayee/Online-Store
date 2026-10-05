@@ -23,9 +23,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'That message is too long — please shorten it a little.';
     } else {
         require_once __DIR__ . '/includes/mail.php';
-        $body = '<p><strong>' . e($name) . '</strong> (' . e($email) . ') sent a message from the contact form:</p>'
-            . '<p style="white-space:pre-wrap;background:#f8f6ee;padding:14px;border-radius:6px;">' . e($message) . '</p>';
-        $delivered = send_email($store['email'], $store['name'], 'New contact message from ' . $name, email_wrap('New contact message', $body), $email, $name);
+        [$subject, $html] = email_render('contact_message', [
+            'sender_name' => e($name), 'sender_email' => e($email),
+            'message' => '<p style="white-space:pre-wrap;background:#f8f6ee;padding:14px;border-radius:6px;">' . e($message) . '</p>',
+        ]);
+        $delivered = send_email($store['email'], $store['name'], $subject, $html, $email, $name);
         if ($delivered) {
             $sent = true;
             $_SESSION['contact_last_sent'] = time();

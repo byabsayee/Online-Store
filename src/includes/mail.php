@@ -6,6 +6,7 @@
  * quick testing, but most hosts need real SMTP creds to actually deliver).
  */
 require_once __DIR__ . '/functions.php';
+require_once __DIR__ . '/email_templates.php';
 require_once __DIR__ . '/../vendor/autoload.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
@@ -176,7 +177,7 @@ function email_wrap(string $title, string $bodyHtml): string {
     $head = $logo
         ? '<div style="background:#ffffff;padding:16px 24px;border-bottom:4px solid ' . e($dark) . ';"><img src="' . e($logo) . '" alt="' . e($store['name']) . '" style="display:block;max-height:44px;max-width:220px;height:auto;width:auto;border:0;"></div>'
         : '<div style="background:' . e($dark) . ';color:' . e(contrast_text($dark)) . ';padding:18px 24px;font-size:1.1rem;font-weight:bold;">' . e($store['name']) . '</div>';
-    $foot = e($store['name']) . ($store['email'] !== '' ? ' &middot; ' . e($store['email']) : '') . ($store['phone'] !== '' ? ' &middot; ' . e($store['phone']) : '') . ($store['phone2'] !== '' ? ' &middot; ' . e($store['phone2']) : '');
+    $foot = e($store['name']) . ($store['email'] !== '' ? ' &middot; ' . e($store['email']) : '') . implode('', array_map(fn ($p) => ' &middot; ' . e($p), array_slice(store_phones(), 0, 2)));
     return '<div style="font-family:Arial,Helvetica,sans-serif;background:#efece2;padding:32px 16px;">'
         . '<div style="max-width:520px;margin:0 auto;background:#fffdf8;border:1px solid #d9d4c3;border-radius:8px;overflow:hidden;">'
         . $head

@@ -61,18 +61,26 @@ function send_order_confirmation(int $orderId): void {
                 . '</td><td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:center;">× ' . (int) $it['quantity']
                 . '</td><td style="padding:6px 0;border-bottom:1px solid #eee;text-align:right;">' . e(money((float) $it['subtotal'])) . '</td></tr>';
         }
-        $body = '<p>Hi ' . e(explode(' ', $order['shipping_name'])[0]) . ',</p>'
-            . '<p>Thank you for your order! We\'ve received it and will get it ready. Your order number is <strong>#' . e($order['order_number']) . '</strong>'
-            . (order_invoice_differs($order) ? ' and your invoice ID is <strong>' . e(order_invoice_id($order)) . '</strong>' : '') . '.</p>'
-            . '<table style="width:100%;border-collapse:collapse;font-size:14px;">' . $rows . '</table>'
-            . '<p style="text-align:right;margin:10px 0 0;">'
+        $isCod = ($order['payment_method'] ?? 'cod') === 'cod';
+        $proof = order_payment_proof($order);
+        $totals = '<p style="text-align:right;margin:10px 0 0;">'
             . (((float) ($order['discount'] ?? 0)) > 0 ? 'Discount' . (!empty($order['coupon_code']) ? ' (' . e($order['coupon_code']) . ')' : '') . ': &minus;' . e(money((float) $order['discount'])) . '<br>' : '')
             . 'Shipping (' . e(delivery_area_label($order['delivery_area'])) . '): ' . e(money((float) $order['shipping_fee'])) . '<br>'
-            . '<strong>Total to pay on delivery: ' . e(money((float) $order['total'])) . '</strong></p>'
-            . '<p style="color:#4a5670;font-size:14px;">Delivering to: ' . e($order['shipping_name']) . ', ' . e($order['shipping_line1']) . ', ' . e($order['shipping_city']) . '</p>'
-            . (empty($order['billing_same_as_shipping']) ? '<p style="color:#4a5670;font-size:14px;">Billing to: ' . e($order['billing_name']) . ', ' . e($order['billing_line1']) . ', ' . e($order['billing_city']) . '</p>' : '')
-            . (!empty($order['user_id']) ? order_email_button(mail_url(order_url($order['order_number'])), 'View your order') : order_guest_cta($order, $to));
-        send_email($to, $order['shipping_name'], 'Order #' . $order['order_number'] . ' confirmed', email_wrap('Thanks for your order', $body), null, null, 'order');
+            . '<strong>Total: ' . e(money((float) $order['total'])) . '</strong></p>';
+        $payNote = '<p>Payment: ' . e(order_payment_name($order))
+            . ($isCod ? ' — please have ' . e(money((float) $order['total'])) . ' ready when your order arrives.' : '')
+            . ($proof !== '' ? '<br><span style="color:#8791a6;font-size:13px;">' . e($proof) . '</span>' : '') . '</p>';
+        $vars = [
+            'first_name' => email_first_name((string) $order['shipping_name']), 'order_number' => e($order['order_number']),
+            'invoice_note' => order_invoice_differs($order) ? ' and your invoice ID is <strong>' . e(order_invoice_id($order)) . '</strong>' : '',
+            'items_table' => '<table style="width:100%;border-collapse:collapse;font-size:14px;">' . $rows . '</table>',
+            'totals' => $totals, 'payment_note' => $payNote,
+            'delivery_to' => e($order['shipping_name']) . ', ' . e($order['shipping_line1']) . ', ' . e($order['shipping_city']),
+            'billing_line' => empty($order['billing_same_as_shipping']) ? '<p>Billing to: ' . e($order['billing_name']) . ', ' . e($order['billing_line1']) . ', ' . e($order['billing_city']) . '</p>' : '',
+            'button' => !empty($order['user_id']) ? ['href' => mail_url(order_url($order['order_number']))] : order_guest_cta($order, $to),
+        ];
+        [$subject, $html] = email_render('order_confirmation', $vars);
+        send_email($to, $order['shipping_name'], $subject, $html, null, null, 'order');
     } catch (Throwable $e) {
         error_log('[order_mail] confirmation failed: ' . $e->getMessage());
     }
@@ -119,11 +127,13 @@ function send_order_status_email(array $order, string $newStatus, ?string $note)
         $to = order_customer_email($order);
         if (!$to) return;
         $label = ORDER_STATUS_LABELS[$newStatus] ?? ucfirst($newStatus);
-        $body = '<p>Hi ' . e(explode(' ', $order['shipping_name'])[0]) . ',</p>'
-            . '<p>Your order <strong>#' . e($order['order_number']) . '</strong>' . (order_invoice_differs($order) ? ' (invoice <strong>' . e(order_invoice_id($order)) . '</strong>)' : '') . ' is now <strong>' . e($label) . '</strong>.</p>'
-            . ($note ? '<p>' . e($note) . '</p>' : '')
-            . (!empty($order['user_id']) ? order_email_button(mail_url(order_url($order['order_number'])), 'Track your order') : order_guest_cta($order, $to));
-        send_email($to, $order['shipping_name'], 'Order #' . $order['order_number'] . ' — ' . $label, email_wrap('Order update', $body), null, null, 'order-status');
+        [$subject, $html] = email_render('order_status', [
+            'first_name' => email_first_name((string) $order['shipping_name']), 'order_number' => e($order['order_number']),
+            'invoice_note' => order_invoice_differs($order) ? ' (invoice <strong>' . e(order_invoice_id($order)) . '</strong>)' : '',
+            'status' => e($label), 'note' => $note ? '<p>' . e($note) . '</p>' : '',
+            'button' => !empty($order['user_id']) ? ['href' => mail_url(order_url($order['order_number']))] : order_guest_cta($order, $to),
+        ]);
+        send_email($to, $order['shipping_name'], $subject, $html, null, null, 'order-status');
     } catch (Throwable $e) {
         error_log('[order_mail] status email failed: ' . $e->getMessage());
     }

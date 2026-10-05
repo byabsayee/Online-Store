@@ -13,7 +13,7 @@ function admin_settings_groups(): array {
     return [
         'Store' => ['settings.php' => 'Details & email', 'regional.php' => 'Region & invoices', 'contacts.php' => 'Addresses & contacts', 'notifications.php' => 'Order alerts'],
         'Look' => ['branding.php' => 'Branding', 'theme_settings.php' => 'Theme', 'fonts.php' => 'Fonts'],
-        'Content' => ['pages.php' => 'Pages', 'footer_links.php' => 'Footer', 'partners.php' => 'Partners', 'ads.php' => 'Ads'],
+        'Content' => ['pages.php' => 'Pages', 'email_templates.php' => 'Emails', 'footer_links.php' => 'Footer', 'partners.php' => 'Partners', 'ads.php' => 'Ads'],
         'Checkout' => ['payment_methods.php' => 'Payments', 'delivery_tax.php' => 'Delivery & tax'],
         'Connect' => ['erp.php' => 'Accounting link', 'preset.php' => 'Backup & presets'],
     ];

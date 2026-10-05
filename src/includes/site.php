@@ -300,15 +300,16 @@ function notify_new_order(int $orderId): void {
         }
         $pay = payment_method_label((string) $o['payment_method']);
         if ($o['payment_method_id']) { $pm = db()->prepare('SELECT name FROM payment_methods WHERE id = ?'); $pm->execute([$o['payment_method_id']]); if ($n = $pm->fetchColumn()) $pay = $n; }
-        $body = '<p>A new order just came in.</p>'
-            . '<p><strong>' . e($o['order_number']) . '</strong> — total <strong>' . e(money((float) $o['total'])) . '</strong><br>Payment: ' . e($pay)
-            . ($o['pay_txn'] ? '<br>Sent from: ' . e((string) $o['pay_sender']) . ' · Transaction ID: <strong>' . e($o['pay_txn']) . '</strong>' : '') . '</p>'
-            . '<table style="border-collapse:collapse;width:100%">' . $rows . '</table>'
-            . '<p style="margin-top:12px"><strong>' . e($o['shipping_name']) . '</strong> · ' . e($o['shipping_phone']) . '<br>' . e(trim($o['shipping_line1'] . ', ' . $o['shipping_city'], ', ')) . '</p>'
-            . '<p><a href="' . e(mail_url('/admin/order_detail.php?id=' . (int) $orderId)) . '">Open the order in admin</a></p>';
         require_once __DIR__ . '/mail.php';
         require_once __DIR__ . '/order_mail.php';
-        foreach ($to as $addr) send_email($addr, store_name(), 'New order ' . $o['order_number'] . ' — ' . money((float) $o['total']), email_wrap('New order', $body), null, null, 'order_notify');
+        [$subject, $html] = email_render('new_order_admin', [
+            'order_number' => e($o['order_number']), 'total' => e(money((float) $o['total'])), 'payment' => e($pay),
+            'payment_proof' => $o['pay_txn'] ? '<br>Sent from: ' . e((string) $o['pay_sender']) . ' · Transaction ID: <strong>' . e($o['pay_txn']) . '</strong>' : '',
+            'items_table' => '<table style="border-collapse:collapse;width:100%">' . $rows . '</table>',
+            'customer' => '<strong>' . e($o['shipping_name']) . '</strong> · ' . e($o['shipping_phone']) . '<br>' . e(trim($o['shipping_line1'] . ', ' . $o['shipping_city'], ', ')),
+            'button' => ['href' => mail_url('/admin/order_detail.php?id=' . (int) $orderId)],
+        ]);
+        foreach ($to as $addr) send_email($addr, store_name(), $subject, $html, null, null, 'order_notify');
     } catch (Throwable $e) { error_log('[notify_new_order] ' . $e->getMessage()); }
 }
 
@@ -365,11 +366,13 @@ function customer_cancel_order(array $order, string $reason): ?string {
             require_once __DIR__ . '/order_mail.php';
             send_order_status_email($fresh, 'cancelled', 'You cancelled this order.' . ($hadPayment ? ' If you already paid, we will contact you about your refund.' : ''));
             $to = order_notify_recipients() ?: array_filter([store_info()['email']]);
-            $body = '<p>A customer cancelled order <strong>' . e($fresh['order_number']) . '</strong> (' . e(money((float) $fresh['total'])) . ').</p>'
-                . ($reason !== '' ? '<p>Reason: ' . e($reason) . '</p>' : '')
-                . ($hadPayment ? '<p><strong>A payment was recorded for this order — please arrange the refund.</strong></p>' : '')
-                . '<p>The items are back in stock. <a href="' . e(mail_url('/admin/order_detail.php?id=' . (int) $fresh['id'])) . '">Open the order in admin</a></p>';
-            foreach ($to as $addr) send_email($addr, store_name(), 'Order ' . $fresh['order_number'] . ' cancelled by customer', email_wrap('Order cancelled', $body), null, null, 'order_cancel_notify');
+            [$subject, $html] = email_render('order_cancelled_admin', [
+                'order_number' => e($fresh['order_number']), 'total' => e(money((float) $fresh['total'])),
+                'reason_line' => $reason !== '' ? '<p>Reason: ' . e($reason) . '</p>' : '',
+                'refund_line' => $hadPayment ? '<p><strong>A payment was recorded for this order — please arrange the refund.</strong></p>' : '',
+                'button' => ['href' => mail_url('/admin/order_detail.php?id=' . (int) $fresh['id'])],
+            ]);
+            foreach ($to as $addr) send_email($addr, store_name(), $subject, $html, null, null, 'order_cancel_notify');
         } catch (Throwable $e) { error_log('[customer_cancel mail] ' . $e->getMessage()); }
     });
     return null;
@@ -515,6 +518,8 @@ function sanitize_page_html(string $html): string {
 function preset_setting_keys(): array {
     $seo = [];
     foreach (array_keys(site_page_defs()) as $sl) { $seo[] = 'page_seo_title_' . $sl; $seo[] = 'page_seo_desc_' . $sl; }
+    require_once __DIR__ . '/email_templates.php';
+    $seo = array_merge($seo, email_template_setting_keys());
     return array_merge($seo, ['store_name', 'store_tagline', 'site_description', 'store_phone', 'store_phone2', 'store_email', 'store_address', 'store_address_map', 'contact_addresses', 'contact_emails', 'contact_phones',
         'social_facebook', 'social_messenger', 'social_instagram', 'social_youtube', 'social_signal', 'social_whatsapp', 'social_tiktok',
         'theme_primary', 'theme_secondary', 'theme_dark', 'seasonal_enabled', 'seasonal_effect', 'topbar_enabled', 'topbar_text', 'topbar_link',

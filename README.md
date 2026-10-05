@@ -20,10 +20,12 @@ time zone and delivery zones.
   editor** (placeholders fill in your store details), **footer links** (any title, any link), **partners page**,
   announcement bar, seasonal effects, cookie notice, **ads** (Google AdSense, six placements), currency symbol /
   code / position / decimals, time zone, order-number prefix, delivery time, invoice text and tax number.
-- **Payments** — cash on delivery plus any number of manual methods (bKash, Rocket, Nagad, Upay, bank transfer,
-  card-by-link…). Each has its own name, logo, receiving number and instructions; customers enter their sender
+- **Payments** — cash on delivery plus any number of manual methods (bKash, Rocket, Nagad, Upay, bank transfer…). Each has its own name, logo, receiving number and instructions; customers enter their sender
   number and transaction ID, you verify and mark the order paid.
-- **Order alerts** — an email to up to three addresses for every new order.
+- **Order alerts** — an email to up to three addresses for every new order; customers can cancel their own order until it ships.
+- **Email templates** — every email the store sends (sign-up, password reset, order emails, owner alerts, contact form) has
+  editable wording with placeholders, a preview and a test-send button.
+- **Addresses & contacts** — one page for the main and extra addresses (with Google Maps links), emails and phone numbers.
 - **Products** — each product can carry one external link with its own title (video, size guide, manual…).
 - **Admin** — grouped navigation, a settings hub with tabs, staff roles, activity log, preset export/import.
 - **Optional accounting link** — pairs with [Byabsayee](https://byabsayee.com) (off until paired; see `docs/INTEGRATION.md`).
