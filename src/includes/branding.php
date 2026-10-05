@@ -41,10 +41,70 @@ function store_info(): array {
 
 function store_name(): string { return store_info()['name']; }
 
-/** The store's phone numbers that are set — the main one, then the optional second one. @return string[] */
-function store_phones(): array {
+/** Extra contact rows saved by the owner (Admin → Addresses & contacts), decoded and cleaned. */
+function contact_extras(string $key): array {
+    $raw = json_decode((string) get_setting($key, ''), true);
+    return is_array($raw) ? array_values(array_filter($raw, 'is_array')) : [];
+}
+
+/** A map link is kept only when it is a proper https:// address (Google Maps, maps.app.goo.gl, OpenStreetMap…). */
+function map_link_clean(string $u): string {
+    $u = trim($u);
+    return (preg_match('~^https://[^\s<>"\']+$~i', $u) && filter_var($u, FILTER_VALIDATE_URL)) ? $u : '';
+}
+
+/** Every address to show: the main one first, then the extra ones. @return array<int, array{label:string,text:string,map:string}> */
+function store_addresses(): array {
+    $out = [];
+    $main = store_info()['address'];
+    if ($main !== '') $out[] = ['label' => (string) get_setting('store_address_label', ''), 'text' => $main, 'map' => map_link_clean((string) get_setting('store_address_map', ''))];
+    foreach (contact_extras('contact_addresses') as $r) {
+        $t = trim((string) ($r['text'] ?? ''));
+        if ($t !== '') $out[] = ['label' => trim((string) ($r['label'] ?? '')), 'text' => $t, 'map' => map_link_clean((string) ($r['map'] ?? ''))];
+    }
+    return $out;
+}
+
+/** Every email to show: the main one first, then the extra ones. @return array<int, array{label:string,email:string}> */
+function store_emails(): array {
+    $out = [];
+    $seen = [];
+    $add = function (string $label, string $email) use (&$out, &$seen) {
+        $email = trim($email);
+        if ($email === '' || isset($seen[strtolower($email)]) || !filter_var($email, FILTER_VALIDATE_EMAIL)) return;
+        $seen[strtolower($email)] = true;
+        $out[] = ['label' => trim($label), 'email' => $email];
+    };
+    $add('', store_info()['email']);
+    foreach (contact_extras('contact_emails') as $r) $add((string) ($r['label'] ?? ''), (string) ($r['email'] ?? ''));
+    return $out;
+}
+
+/** Every phone number with its optional label. @return array<int, array{label:string,number:string}> */
+function store_phone_entries(): array {
+    $out = [];
     $i = store_info();
-    return array_values(array_filter([$i['phone'], $i['phone2']], fn ($p) => $p !== ''));
+    foreach ([$i['phone'], $i['phone2']] as $p) if ($p !== '') $out[] = ['label' => '', 'number' => $p];
+    foreach (contact_extras('contact_phones') as $r) {
+        $n = trim((string) ($r['number'] ?? ''));
+        if ($n !== '') $out[] = ['label' => trim((string) ($r['label'] ?? '')), 'number' => $n];
+    }
+    return $out;
+}
+
+/** The store's phone numbers that are set — main, optional second, then any extra ones. @return string[] */
+function store_phones(): array {
+    return array_values(array_map(fn ($p) => $p['number'], store_phone_entries()));
+}
+
+/** "Label" prefix for a contact row, or ''. */
+function contact_label_html(string $label): string {
+    return $label !== '' ? '<em class="c-label">' . e($label) . '</em> ' : '';
+}
+
+/** Small "Map ↗" link for an address. */
+function map_link_html(string $url): string {
+    return $url !== '' ? ' <a class="map-link" href="' . e($url) . '" target="_blank" rel="noopener">Map ↗</a>' : '';
 }
 
 /**
@@ -625,6 +685,8 @@ function render_head_meta(): string {
     $h = '<title>' . e($title) . "</title>\n";
     $h .= $m('name', 'description', $desc);
     if ($robots) $h .= $m('name', 'robots', $robots);
+    $__ads = ads_settings();
+    if ($__ads['client'] !== '' && preg_match('/^ca-pub-\d{8,20}$/', $__ads['client'])) $h .= $m('name', 'google-adsense-account', $__ads['client']);
     $h .= '<link rel="canonical" href="' . e($url) . '">' . "\n";
 
     // Open Graph (Facebook, WhatsApp, Messenger, LinkedIn, Telegram…)
@@ -687,7 +749,8 @@ function store_contact_extra_html(): string {
     $s = store_info();
     $bits = [];
     if ($ph = store_phones()) $bits[] = 'Phone: ' . implode(' / ', array_map(fn ($p) => '<a href="' . e(tel_href($p)) . '">' . e($p) . '</a>', $ph));
-    if ($s['address'] !== '') $bits[] = 'Address: ' . e(str_replace("\n", ', ', $s['address']));
+    if ($ad = store_addresses()) $bits[] = (count($ad) > 1 ? 'Addresses: ' : 'Address: ') . implode(' | ', array_map(fn ($a) => contact_label_html($a['label']) . e(str_replace("\n", ', ', $a['text'])) . map_link_html($a['map']), $ad));
+    if (count($em = store_emails()) > 1) $bits[] = 'Email: ' . implode(' / ', array_map(fn ($m) => '<a href="mailto:' . e($m['email']) . '">' . e($m['email']) . '</a>', $em));
     return $bits ? '<p>' . implode(' · ', $bits) . '</p>' : '';
 }
 

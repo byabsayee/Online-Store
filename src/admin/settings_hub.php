@@ -5,6 +5,7 @@ require_owner();
 $pageTitle = 'Store settings';
 $desc = [
     'settings.php' => 'Name, contact details, social links, announcement bar, outgoing email, Google login',
+    'contacts.php' => 'Extra addresses with Google Maps links, emails and phone numbers',
     'regional.php' => 'Currency, time zone, order-number prefix, delivery time, invoice text',
     'notifications.php' => 'Get an email whenever a new order arrives',
     'branding.php' => 'Logo, favicon, share image and link-preview text',

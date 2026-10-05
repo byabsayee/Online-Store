@@ -47,7 +47,7 @@ COPY sql/migrations/ /var/www/migrations/
 COPY sql/schema.sql /var/www/schema.sql
 
 # Uploaded product images must be writable by the web server
-RUN mkdir -p /var/www/html/uploads/products /var/www/html/uploads/branding \
+RUN mkdir -p /var/www/html/uploads/products /var/www/html/uploads/branding /var/www/html/uploads/fonts \
     && chown -R www-data:www-data /var/www/html/uploads /var/www/html \
     && chown -R www-data:www-data /run/php
 
@@ -57,4 +57,7 @@ EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
     CMD php -r 'exit(@fsockopen("127.0.0.1", 80, $e, $m, 3) ? 0 : 1);'
 
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+COPY docker/entrypoint.sh /usr/local/bin/store-entrypoint
+RUN sed -i 's/\r$//' /usr/local/bin/store-entrypoint && chmod +x /usr/local/bin/store-entrypoint
+
+CMD ["/usr/local/bin/store-entrypoint"]

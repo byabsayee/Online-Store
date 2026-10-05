@@ -11,7 +11,7 @@ function nav_link(string $href, string $label, array $files, string $current, st
 /** Store-settings screens, grouped for the tab bar: group => [file => label]. */
 function admin_settings_groups(): array {
     return [
-        'Store' => ['settings.php' => 'Details & email', 'regional.php' => 'Region & invoices', 'notifications.php' => 'Order alerts'],
+        'Store' => ['settings.php' => 'Details & email', 'regional.php' => 'Region & invoices', 'contacts.php' => 'Addresses & contacts', 'notifications.php' => 'Order alerts'],
         'Look' => ['branding.php' => 'Branding', 'theme_settings.php' => 'Theme', 'fonts.php' => 'Fonts'],
         'Content' => ['pages.php' => 'Pages', 'footer_links.php' => 'Footer', 'partners.php' => 'Partners', 'ads.php' => 'Ads'],
         'Checkout' => ['payment_methods.php' => 'Payments', 'delivery_tax.php' => 'Delivery & tax'],

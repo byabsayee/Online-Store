@@ -312,7 +312,71 @@ function notify_new_order(int $orderId): void {
     } catch (Throwable $e) { error_log('[notify_new_order] ' . $e->getMessage()); }
 }
 
+/* ============================================================ customer cancellation */
+
+/** Customers may cancel their own order from the website (owner can switch this off). */
+function customer_cancel_enabled(): bool { return get_setting('customer_cancel', '1') === '1'; }
+
+/** Orders can be cancelled online until they are shipped. */
+function customer_can_cancel(array $order): bool {
+    return customer_cancel_enabled() && in_array($order['status'] ?? '', ['pending', 'processing'], true);
+}
+
+/**
+ * Cancels the order on the customer's behalf: stock goes back on the shelf and recorded payments are voided
+ * (same code path as the admin's Cancel), then the customer and the shop owner are emailed.
+ * Returns null on success, or a message that is safe to show the customer.
+ */
+function customer_cancel_order(array $order, string $reason): ?string {
+    $pdo = db();
+    $reason = mb_substr(trim($reason), 0, 300);
+    $note = 'Cancelled by the customer' . ($reason !== '' ? ': ' . $reason : '');
+    $hadPayment = false;
+    try {
+        $pdo->beginTransaction();
+        $st = $pdo->prepare('SELECT status FROM orders WHERE id = ? FOR UPDATE');
+        $st->execute([(int) $order['id']]);
+        $cur = (string) $st->fetchColumn();
+        if ($cur === 'cancelled') { $pdo->rollBack(); return null; }
+        if (!customer_cancel_enabled() || !in_array($cur, ['pending', 'processing'], true)) {
+            $pdo->rollBack();
+            return 'This order is already ' . strtolower($cur) . ' and can no longer be cancelled online. Please contact us and we will help.';
+        }
+        $vp = $pdo->prepare("SELECT id FROM order_payments WHERE order_id = ? AND status = 'recorded'");
+        $vp->execute([(int) $order['id']]);
+        $voiding = $vp->fetchAll(PDO::FETCH_COLUMN);
+        $hadPayment = $voiding !== [] || !empty($order['pay_txn']);
+        $from = erp_order_set_status((int) $order['id'], 'cancelled', $note, null);
+        if ($from !== null) {
+            foreach ($voiding as $pid) erp_emit('payment', (int) $pid, 'void');
+            erp_emit('order', (int) $order['id'], 'cancel');
+        }
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        error_log('[customer_cancel] ' . $e->getMessage());
+        return 'We could not cancel the order just now. Please try again or contact us.';
+    }
+    $st = $pdo->prepare('SELECT * FROM orders WHERE id = ?'); $st->execute([(int) $order['id']]);
+    $fresh = $st->fetch() ?: $order;
+    defer_job(function () use ($fresh, $reason, $hadPayment) {
+        try {
+            require_once __DIR__ . '/mail.php';
+            require_once __DIR__ . '/order_mail.php';
+            send_order_status_email($fresh, 'cancelled', 'You cancelled this order.' . ($hadPayment ? ' If you already paid, we will contact you about your refund.' : ''));
+            $to = order_notify_recipients() ?: array_filter([store_info()['email']]);
+            $body = '<p>A customer cancelled order <strong>' . e($fresh['order_number']) . '</strong> (' . e(money((float) $fresh['total'])) . ').</p>'
+                . ($reason !== '' ? '<p>Reason: ' . e($reason) . '</p>' : '')
+                . ($hadPayment ? '<p><strong>A payment was recorded for this order — please arrange the refund.</strong></p>' : '')
+                . '<p>The items are back in stock. <a href="' . e(mail_url('/admin/order_detail.php?id=' . (int) $fresh['id'])) . '">Open the order in admin</a></p>';
+            foreach ($to as $addr) send_email($addr, store_name(), 'Order ' . $fresh['order_number'] . ' cancelled by customer', email_wrap('Order cancelled', $body), null, null, 'order_cancel_notify');
+        } catch (Throwable $e) { error_log('[customer_cancel mail] ' . $e->getMessage()); }
+    });
+    return null;
+}
+
 /* ============================================================ editable pages */
+
 
 /** The pages an owner can edit: slug => [title, public path, eyebrow]. */
 function site_page_defs(): array {
@@ -321,6 +385,7 @@ function site_page_defs(): array {
         'faq' => ['title' => 'Frequently asked questions', 'url' => '/faq', 'eyebrow' => 'Help'],
         'terms' => ['title' => 'Terms of Service', 'url' => '/terms', 'eyebrow' => 'Legal'],
         'privacy-policy' => ['title' => 'Privacy Policy', 'url' => '/privacy-policy', 'eyebrow' => 'Legal'],
+        'cookie-policy' => ['title' => 'Cookie Policy', 'url' => '/cookie-policy', 'eyebrow' => 'Legal'],
         'refund-policy' => ['title' => 'Refund & Return Policy', 'url' => '/refund-policy', 'eyebrow' => 'Legal'],
         'shipping-policy' => ['title' => 'Shipping & Delivery Policy', 'url' => '/shipping-policy', 'eyebrow' => 'Legal'],
     ];
@@ -426,7 +491,7 @@ function sanitize_page_html(string $html): string {
                     continue;
                 }
                 foreach (iterator_to_array($ch->attributes) as $at) {
-                    $keep = $tag === 'a' && in_array($at->name, ['href', 'target', 'rel'], true);
+                    $keep = $tag === 'a' && in_array($at->name, ['href', 'target', 'rel', 'data-cookie-reset'], true);
                     if (!$keep) $ch->removeAttribute($at->name);
                 }
                 if ($tag === 'a') {
@@ -450,14 +515,14 @@ function sanitize_page_html(string $html): string {
 function preset_setting_keys(): array {
     $seo = [];
     foreach (array_keys(site_page_defs()) as $sl) { $seo[] = 'page_seo_title_' . $sl; $seo[] = 'page_seo_desc_' . $sl; }
-    return array_merge($seo, ['store_name', 'store_tagline', 'site_description', 'store_phone', 'store_phone2', 'store_email', 'store_address',
+    return array_merge($seo, ['store_name', 'store_tagline', 'site_description', 'store_phone', 'store_phone2', 'store_email', 'store_address', 'store_address_map', 'contact_addresses', 'contact_emails', 'contact_phones',
         'social_facebook', 'social_messenger', 'social_instagram', 'social_youtube', 'social_signal', 'social_whatsapp', 'social_tiktok',
         'theme_primary', 'theme_secondary', 'theme_dark', 'seasonal_enabled', 'seasonal_effect', 'topbar_enabled', 'topbar_text', 'topbar_link',
         'currency_symbol', 'currency_code', 'currency_pos', 'currency_decimals', 'timezone', 'order_prefix',
         'ship_inside', 'ship_suburbs', 'ship_outside', 'ship_free_kg', 'ship_extra_kg', 'zone_label_inside', 'zone_label_suburbs', 'zone_label_outside', 'zone_off_suburbs', 'zone_off_outside',
         'tax_enabled', 'tax_rate', 'tax_inclusive', 'tax_label',
         'credit_enabled', 'credit_text', 'credit_url', 'source_link_enabled', 'source_url', 'footer_text', 'partners_enabled', 'cookie_notice',
-        'notify_enabled', 'notify_email', 'font_title_src', 'font_title_name', 'font_primary_src', 'font_primary_name', 'font_secondary_src', 'font_secondary_name',
+        'notify_enabled', 'notify_email', 'customer_cancel', 'font_title_src', 'font_title_name', 'font_primary_src', 'font_primary_name', 'font_secondary_src', 'font_secondary_name',
         'home_eyebrow', 'home_headline', 'home_lead', 'home_cta', 'home_card_title', 'home_stamp', 'home_points', 'home_why_tag', 'home_why_title',
         'home_c1_title', 'home_c1_text', 'home_c2_title', 'home_c2_text', 'home_c3_title', 'home_c3_text',
         'ads_enabled', 'ads_client', 'ads_txt', 'delivery_days_min', 'delivery_days_max', 'invoice_header', 'invoice_footer', 'invoice_tax_number']);

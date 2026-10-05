@@ -855,8 +855,8 @@ label.switch input:focus-visible + .track { outline: 2px solid var(--brass); out
 
 /* ---- partners, ads, cookie notice (Online Store template) ---- */
 .partner-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px}
-.partner-card{background:var(--white,#fff);border:1px solid var(--line);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:12px}
-.partner-head{display:flex;align-items:center;gap:12px}.partner-head h2{margin:0;font-size:1.1rem}
+.partner-card{background:var(--paper-raised);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:12px}
+.partner-head{display:flex;align-items:center;gap:12px}.partner-head h2{margin:0;font-size:1.1rem;color:var(--ink)}
 .partner-head img{width:56px;height:56px;object-fit:contain;border-radius:8px;background:#fff;border:1px solid var(--line);padding:4px}
 .partner-initial{width:56px;height:56px;border-radius:8px;background:var(--brass-tint);color:var(--accent-text);display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:1.3rem}
 .partner-card p{margin:0;color:var(--ink-soft)}.partner-links{display:flex;flex-wrap:wrap;gap:8px;margin-top:auto}
@@ -865,3 +865,7 @@ label.switch input:focus-visible + .track { outline: 2px solid var(--brass); out
 .cookie-notice[hidden]{display:none}.cookie-notice p{margin:0;flex:1 1 240px;font-size:.88rem}.cookie-notice a{text-decoration:underline}
 .footer-credits a{text-decoration:underline;text-underline-offset:2px}
 @media (max-width:720px){.cookie-notice{bottom:calc(76px + env(safe-area-inset-bottom))}}
+
+/* ---- multiple contact rows ---- */
+.c-label{font-style:normal;font-family:var(--font-mono);font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;opacity:.75;margin-right:4px}
+.map-link{font-weight:600;text-decoration:underline;text-underline-offset:2px;white-space:nowrap}

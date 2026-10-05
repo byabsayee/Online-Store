@@ -48,9 +48,26 @@ return [
 <h2>Sharing</h2>
 <p>We share only what is needed with delivery partners and payment providers, and where the law requires it. We do not sell your personal information.</p>
 <h2>Cookies</h2>
-<p>We use cookies to keep you signed in, remember your cart and your display preferences. If advertising is shown on this site, advertising partners may use cookies too; you can accept or refuse where a cookie notice is shown.</p>
+<p>We use cookies to keep you signed in, remember your cart and your display preferences. If advertising is shown on this site, advertising partners may use cookies too; you can accept or refuse where a cookie notice is shown. Details are in our <a href="/cookie-policy">Cookie Policy</a>.</p>
 <h2>Your rights</h2>
 <p>You can ask to see, correct or delete your personal data by contacting us at <a href="mailto:{store_email}">{store_email}</a>.</p>
+<p><em>This is a starter template and not legal advice. Please have it reviewed for your country and business.</em></p>',
+
+'cookie-policy' => '<p>Last updated: {updated}. This policy explains what cookies are and how {store_name} uses them. It should be read together with our <a href="/privacy-policy">Privacy Policy</a>.</p>
+<h2>What is a cookie?</h2>
+<p>A cookie is a small text file that a website stores on your device. Cookies (and similar technologies such as local storage) let a site remember who you are between pages and visits.</p>
+<h2>Cookies we use</h2>
+<ul>
+<li><strong>Essential cookies</strong> keep you signed in, remember what is in your cart, protect forms against misuse and keep the site secure. The site cannot work properly without them, so they are always on.</li>
+<li><strong>Preference storage</strong> remembers choices such as light or dark mode and your answer to the cookie notice. It stays on your device and is not used to identify you.</li>
+<li><strong>Advertising and measurement cookies</strong> are used only if this site shows ads or analytics, and only after you press Accept. They are set by our advertising or analytics partners (for example Google) to show and measure ads.</li>
+</ul>
+<h2>Your choices</h2>
+<p>When the cookie notice appears you can accept or decline non-essential cookies. You can change your mind at any time: <a href="#" data-cookie-reset>change my cookie choice</a>. You can also block or delete cookies in your browser settings; if you block essential cookies, parts of the site (such as the cart and sign-in) will stop working.</p>
+<h2>Third parties</h2>
+<p>If advertising is enabled, our partners may set their own cookies. Their use of information is described in their own privacy policies, for example Google\'s at <a href="https://policies.google.com/technologies/ads" target="_blank" rel="noopener">policies.google.com/technologies/ads</a>.</p>
+<h2>Contact</h2>
+<p>Questions about cookies? Write to <a href="mailto:{store_email}">{store_email}</a>.</p>
 <p><em>This is a starter template and not legal advice. Please have it reviewed for your country and business.</em></p>',
 
 'refund-policy' => '<p>Last updated: {updated}. We want you to be happy with what you buy from {store_name}.</p>

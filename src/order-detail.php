@@ -22,6 +22,14 @@ if (!$order) {
     exit;
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_action'] ?? '') === 'cancel_order') {
+    require_csrf();
+    $cancelErr = customer_cancel_order($order, (string) ($_POST['reason'] ?? ''));
+    if ($cancelErr === null) flash_set('success', 'Your order has been cancelled. We have emailed you a confirmation.');
+    else flash_set('error', $cancelErr);
+    redirect(order_url($order['order_number']));
+}
+
 $itemsStmt = db()->prepare('SELECT * FROM order_items WHERE order_id = ?');
 $itemsStmt->execute([$order['id']]);
 $items = $itemsStmt->fetchAll();
@@ -78,6 +86,20 @@ require __DIR__ . '/includes/header.php';
       <div class="summary-row"><span>Shipping (<?= e(delivery_area_label($order['delivery_area'])) ?>)</span><span class="val"><?= $order['shipping_fee'] > 0 ? money($order['shipping_fee']) : 'Free' ?></span></div>
       <div class="summary-row total"><span>Total</span><span class="val"><?= money($order['total']) ?></span></div>
     </div>
+
+    <?php if (customer_can_cancel($order)): ?>
+    <div class="form-card" style="margin-bottom:20px;">
+      <h3 style="margin-bottom:6px;">Changed your mind?</h3>
+      <p style="color:var(--ink-soft);margin-top:0;">You can cancel this order until it has been shipped. The items go back in stock<?= (order_payment_proof($order) !== '') ? ', and because you already sent a payment we will contact you about the refund' : '' ?>.</p>
+      <form method="post" onsubmit="return confirm('Cancel this order? This cannot be undone.');"><?= csrf_field() ?><input type="hidden" name="form_action" value="cancel_order">
+        <div class="field"><label for="creason">Reason <span style="font-weight:400;color:var(--ink-faint);">(optional)</span></label>
+          <select id="creason" name="reason"><option value="">Choose…</option><option>Ordered by mistake</option><option>Found a better price</option><option>Delivery is too slow</option><option>Want to change the items</option><option>Other</option></select></div>
+        <button class="btn btn-outline">Cancel this order</button>
+      </form>
+    </div>
+    <?php elseif (customer_cancel_enabled() && in_array($order['status'], ['shipped'], true)): ?>
+    <p class="muted" style="margin:-6px 0 20px;font-size:.88rem;">This order has been shipped, so it can no longer be cancelled online. If there is a problem, please <a class="link" href="/contact">contact us</a>.</p>
+    <?php endif; ?>
 
     <div class="form-card" style="margin-bottom:20px;">
       <h3 style="margin-bottom:10px;">Order tracking</h3>

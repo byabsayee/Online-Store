@@ -47,8 +47,9 @@ services:
       # Encrypts the accounting-link secrets at rest. Set once, before pairing, and never change it afterwards.
       ERP_SECRET_KEY: ${ERP_SECRET_KEY:-}
     volumes:
-      # Uploaded photos, logos and fonts live in a real folder next to this file.
-      - ./uploads:/var/www/html/uploads
+      # Uploaded photos, logos and fonts. A named volume works everywhere (including Portainer) and the
+      # container fixes its permissions on start. Back it up like the database (volume "uploads_data").
+      - uploads_data:/var/www/html/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -86,3 +87,4 @@ services:
 
 volumes:
   db_data:
+  uploads_data:

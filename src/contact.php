@@ -55,15 +55,15 @@ require __DIR__ . '/includes/header.php';
     </p>
 
     <ul class="contact-list">
-      <?php $phones = store_phones(); if ($phones): ?>
-        <li><?= ui_icon('phone', 20) ?><div><small>Call us</small><?php foreach ($phones as $i => $ph): ?><?= $i ? '<br>' : '' ?><a href="<?= e(tel_href($ph)) ?>"><?= e($ph) ?></a><?php endforeach; ?></div></li>
+      <?php $phoneRows = store_phone_entries(); if ($phoneRows): ?>
+        <li><?= ui_icon('phone', 20) ?><div><small>Call us</small><?php foreach ($phoneRows as $i => $pe): ?><?= $i ? '<br>' : '' ?><?= contact_label_html($pe['label']) ?><a href="<?= e(tel_href($pe['number'])) ?>"><?= e($pe['number']) ?></a><?php endforeach; ?></div></li>
       <?php endif; ?>
-      <?php if ($store['email'] !== ''): ?>
-        <li><?= ui_icon('mail', 20) ?><div><small>Email</small><a href="mailto:<?= e($store['email']) ?>"><?= e($store['email']) ?></a></div></li>
+      <?php $emailRows = store_emails(); if ($emailRows): ?>
+        <li><?= ui_icon('mail', 20) ?><div><small>Email</small><?php foreach ($emailRows as $i => $em): ?><?= $i ? '<br>' : '' ?><?= contact_label_html($em['label']) ?><a href="mailto:<?= e($em['email']) ?>"><?= e($em['email']) ?></a><?php endforeach; ?></div></li>
       <?php endif; ?>
-      <?php if ($store['address'] !== ''): ?>
-        <li><?= ui_icon('pin', 20) ?><div><small>Visit / post</small><span><?= nl2br(e($store['address'])) ?></span></div></li>
-      <?php endif; ?>
+      <?php foreach (store_addresses() as $ad): ?>
+        <li><?= ui_icon('pin', 20) ?><div><small><?= e($ad['label'] !== '' ? $ad['label'] : 'Visit / post') ?></small><span><?= nl2br(e($ad['text'])) ?></span><?php if ($ad['map'] !== ''): ?><br><a href="<?= e($ad['map']) ?>" target="_blank" rel="noopener">Open in Google Maps ↗</a><?php endif; ?></div></li>
+      <?php endforeach; ?>
     </ul>
 
     <?= social_row_html('contact-links contact-social') ?>

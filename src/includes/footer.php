@@ -20,9 +20,9 @@ $__assetV = $__assetV ?? fn (string $f) => (int) @filemtime(__DIR__ . '/../asset
       <div>
         <h4>Contact</h4>
         <ul class="footer-contact">
-          <?php if ($__store['address'] !== ''): ?><li><?= ui_icon('pin', 16) ?><span><?= nl2br(e($__store['address'])) ?></span></li><?php endif; ?>
-          <?php $__phones = store_phones(); if ($__phones): ?><li><?= ui_icon('phone', 16) ?><span><?php foreach ($__phones as $__i => $__ph): ?><?= $__i ? ' <span class="sep"></span> ' : '' ?><a href="<?= e(tel_href($__ph)) ?>"><?= e($__ph) ?></a><?php endforeach; ?></span></li><?php endif; ?>
-          <?php if ($__store['email'] !== ''): ?><li><?= ui_icon('mail', 16) ?><a href="mailto:<?= e($__store['email']) ?>"><?= e($__store['email']) ?></a></li><?php endif; ?>
+          <?php foreach (store_addresses() as $__ad): ?><li><?= ui_icon('pin', 16) ?><span><?= contact_label_html($__ad['label']) ?><?= nl2br(e($__ad['text'])) ?><?= map_link_html($__ad['map']) ?></span></li><?php endforeach; ?>
+          <?php foreach (store_phone_entries() as $__pe): ?><li><?= ui_icon('phone', 16) ?><span><?= contact_label_html($__pe['label']) ?><a href="<?= e(tel_href($__pe['number'])) ?>"><?= e($__pe['number']) ?></a></span></li><?php endforeach; ?>
+          <?php foreach (store_emails() as $__em): ?><li><?= ui_icon('mail', 16) ?><span><?= contact_label_html($__em['label']) ?><a href="mailto:<?= e($__em['email']) ?>"><?= e($__em['email']) ?></a></span></li><?php endforeach; ?>
         </ul>
       </div>
       <?php foreach (footer_groups() as $__gt => $__gl): ?>
@@ -67,10 +67,11 @@ $__cur = fn (string $k) => !empty($__tabActive[$k]) ? ' active" aria-current="pa
 
 <?php if (cookie_notice_on()): ?>
 <div id="cookieNotice" class="cookie-notice" role="dialog" aria-label="Cookie notice" hidden>
-  <p>We use cookies to keep the site working<?= !empty($GLOBALS['__ads_used']) ? ' and to show ads' : '' ?>. See our <a href="/privacy-policy">Privacy Policy</a>.</p>
+  <p>We use cookies to keep the site working<?= !empty($GLOBALS['__ads_used']) ? ' and to show ads' : '' ?>. Read our <?= site_page_enabled('cookie-policy') ? '<a href="/cookie-policy">Cookie Policy</a> and ' : '' ?><a href="/privacy-policy">Privacy Policy</a>.</p>
   <div><button type="button" class="btn btn-primary btn-sm" data-consent="yes">Accept</button> <button type="button" class="btn btn-outline btn-sm" data-consent="no">Decline</button></div>
 </div>
 <script>(function(){var n=document.getElementById('cookieNotice'),v=null;try{v=localStorage.getItem('store-consent')}catch(e){}if(!v&&n)n.hidden=false;
+document.querySelectorAll('[data-cookie-reset]').forEach(function(a){a.addEventListener('click',function(e){e.preventDefault();try{localStorage.removeItem('store-consent')}catch(x){}if(n)n.hidden=false})});
 document.querySelectorAll('[data-consent]').forEach(function(b){b.addEventListener('click',function(){var c=b.getAttribute('data-consent');try{localStorage.setItem('store-consent',c)}catch(e){}n.hidden=true;if(c==='yes')document.dispatchEvent(new Event('store-consent-yes'))})})})();</script>
 <?php endif; ?>
 <div id="toast" role="status" aria-live="polite"></div>

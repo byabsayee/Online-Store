@@ -156,8 +156,8 @@ $__activeCat = $_GET['slug'] ?? '';
       <?php if (store_phones() || $__store['email'] !== '' || store_socials()): ?>
       <div class="mnav-contact">
         <div class="mnav-title">Get in touch</div>
-        <?php foreach (store_phones() as $__ph): ?><a href="<?= e(tel_href($__ph)) ?>"><?= ui_icon('phone', 18) ?><?= e($__ph) ?></a><?php endforeach; ?>
-        <?php if ($__store['email'] !== ''): ?><a href="mailto:<?= e($__store['email']) ?>"><?= ui_icon('mail', 18) ?><?= e($__store['email']) ?></a><?php endif; ?>
+        <?php foreach (array_slice(store_phones(), 0, 2) as $__ph): ?><a href="<?= e(tel_href($__ph)) ?>"><?= ui_icon('phone', 18) ?><?= e($__ph) ?></a><?php endforeach; ?>
+        <?php foreach (array_slice(store_emails(), 0, 2) as $__em): ?><a href="mailto:<?= e($__em['email']) ?>"><?= ui_icon('mail', 18) ?><?= e($__em['email']) ?></a><?php endforeach; ?>
         <?= social_row_html('contact-links mnav-social') ?>
       </div>
       <?php endif; ?>
