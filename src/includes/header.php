@@ -34,7 +34,7 @@ $__activeCat = $_GET['slug'] ?? '';
     if (t !== 'light' && t !== 'dark') t = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     document.documentElement.setAttribute('data-theme', t);
     var m = document.querySelector('meta[name="theme-color"]');
-    if (m) m.setAttribute('content', t === 'dark' ? '#1a2030' : '#f8f6ee');
+    if (m) m.setAttribute('content', t === 'dark' ? '#252526' : '#f8f6ee');
   } catch (e) {}
 })();
 </script>

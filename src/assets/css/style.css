@@ -43,8 +43,9 @@
 
 /* ------------------------------------------------------------ dark mode --- */
 :root[data-theme="dark"] {
-  --paper: #12161f; --paper-raised: #1a2030; --field: #0f131b;
-  --ink: #ebe8de; --ink-soft: #b9c0ce; --ink-faint: #7f8aa0; --line: #2b3345;
+  /* neutral ash-grey (no blue cast) */
+  --paper: #1b1b1c; --paper-raised: #252526; --field: #141415;
+  --ink: #e8e8e6; --ink-soft: #b5b5b3; --ink-faint: #858583; --line: #3a3a3c;
   --brass-tint: color-mix(in srgb, var(--brass) 55%, white);
   --shadow-card: 0 1px 2px rgba(0,0,0,0.4), 0 6px 16px rgba(0,0,0,0.3);
   --shadow-pop: 0 12px 32px rgba(0,0,0,0.55);
@@ -52,6 +53,7 @@
 }
 :root[data-theme="dark"] .card-product .fav-btn { background: color-mix(in srgb, var(--paper-raised) 90%, transparent); }
 :root[data-theme="dark"] .cat-tile img { opacity: 0.5; }
+:root[data-theme="dark"] .card-product .out-flag { background: rgba(0,0,0,0.6); }
 .theme-fade, .theme-fade *, .theme-fade *::before, .theme-fade *::after { transition: background-color .25s ease, color .25s ease, border-color .25s ease !important; }
 
 

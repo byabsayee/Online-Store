@@ -61,7 +61,7 @@ function build_invoice_html(array $order, array $items): string {
     foreach ($items as $it) {
         $n++;
         $label = '<strong>' . e($it['product_name']) . '</strong>';
-        if (!empty($it['is_preorder'])) $label .= ' <span class="muted small">(Pre-order)</span>';
+        if (!empty($it['is_preorder']) && empty($it['is_backorder'])) $label .= ' <span class="muted small">(Pre-order)</span>';
         if (!empty($it['variant_label'])) $label .= '<br><span class="muted small">' . e($it['variant_label']) . '</span>';
         if ($warranty = warranty_label($it['warranty_days'] ?? null)) $label .= '<br><span class="muted small">' . e($warranty) . '</span>';
         $rowsHtml .= '<tr class="' . ($n % 2 ? 'odd' : 'even') . '">'

@@ -7,7 +7,7 @@
  */
 const MIGRATE_BASELINE = 3;
 /** Highest migration number the code expects; all_settings() upgrades the database until it reaches it. */
-const MIGRATE_LATEST = 16;
+const MIGRATE_LATEST = 17;
 
 function migration_dirs(): array {
     return [

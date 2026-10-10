@@ -35,7 +35,9 @@
       for (var i = 0; i < data.customs.length; i++) if (String(data.customs[i].id) === String(state.custom)) return data.customs[i];
       return null;
     }
-    function inStock(v) { return !!v && v.stock > 0; }
+    function hasStock(v) { return !!v && v.stock > 0; }
+    /** Can this combination be ordered? Real stock, or the product takes orders at zero stock. */
+    function inStock(v) { return !!v && (v.stock > 0 || !!data.backorder); }
 
     /** Is choosing `value` for `kind` possible (with the other axis as currently selected)? */
     function available(kind, value) {
@@ -133,18 +135,20 @@
       if (!simple) {
       if (els.variantField) els.variantField.value = v ? String(v.id) : '';
       if (els.qty) {
-        var qtyCap = stock > 0 ? stock : (data.preorder ? 99 : 1);
+        // With "Show stock" off the real number is never sent to the browser, so the server does the capping.
+        var qtyCap = stock > 0 ? (data.hideStock ? 99 : stock) : ((data.preorder || data.backorder) ? 99 : 1);
         els.qty.max = String(Math.max(qtyCap, 1));
         if (parseInt(els.qty.value, 10) > qtyCap) els.qty.value = String(Math.max(qtyCap, 1));
       }
       if (els.addBtn) {
         els.addBtn.disabled = !v || !canOrder;
-        els.addBtn.textContent = !v ? 'Select an option' : (stock > 0 ? 'Add to cart' : (data.preorder ? 'Pre-order' : 'Out of stock'));
+        els.addBtn.textContent = !v ? 'Select an option' : (stock > 0 ? 'Add to cart' : (data.preorder ? 'Pre-order' : (data.backorder ? 'Add to cart' : 'Out of stock')));
       }
       if (els.stockLine) {
         els.stockLine.innerHTML = stock > 10 ? '<span class="pill pill-sage">In stock</span>'
-          : stock > 0 ? '<span class="pill pill-rust">Only ' + stock + ' left</span>'
+          : stock > 0 ? (data.hideStock ? '<span class="pill pill-sage">In stock</span>' : '<span class="pill pill-rust">Only ' + stock + ' left</span>')
           : data.preorder ? '<span class="pill pill-brass">Pre-order' + (data.preorderNote ? ' — ' + data.preorderNote : '') + '</span>'
+          : data.backorder ? '<span class="pill pill-sage">Available to order</span>'
           : '<span class="pill pill-ink">Out of stock</span>';
       }
       }
@@ -170,7 +174,7 @@
     function init() {
       // Start on the first combination that's actually in stock.
       var first = null;
-      for (var i = 0; i < data.variants.length; i++) { if (inStock(data.variants[i])) { first = data.variants[i]; break; } }
+      for (var i = 0; i < data.variants.length; i++) { if (hasStock(data.variants[i])) { first = data.variants[i]; break; } }
       first = first || data.variants[0] || null;
       if (first) { state.color = first.color; state.size = first.size; }
       doc.querySelectorAll('.swatch, .chip').forEach(function (b) {

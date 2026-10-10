@@ -15,7 +15,7 @@ $variantId = !empty($input['variant_id']) ? (int) $input['variant_id'] : null;
 $customId = !empty($input['customization_id']) ? (int) $input['customization_id'] : null;
 $qty = max(1, (int) ($input['quantity'] ?? 1));
 
-$stmt = db()->prepare('SELECT id, stock, is_active, is_preorder FROM products WHERE id = ?');
+$stmt = db()->prepare('SELECT id, stock, is_active, is_preorder, allow_backorder FROM products WHERE id = ?');
 $stmt->execute([$productId]);
 $product = $stmt->fetch();
 
@@ -25,6 +25,7 @@ if (!$product || !$product['is_active']) {
 }
 
 $isPreorder = (bool) $product['is_preorder'];
+$isBackorder = !empty($product['allow_backorder']);
 $availableStock = (int) $product['stock'];
 if ($variantId) {
     $vStmt = db()->prepare('SELECT id, stock, is_active FROM product_variants WHERE id = ? AND product_id = ?');
@@ -54,14 +55,14 @@ if (!$variantId) {
     }
 }
 
-if ($availableStock < 1 && !$isPreorder) {
+if ($availableStock < 1 && !$isPreorder && !$isBackorder) {
     echo json_encode(['ok' => false, 'message' => 'This product is out of stock.']);
     exit;
 }
 
 // Pre-order items have no real stock cap yet, so quantity isn't clamped to $availableStock the
 // way an in-stock item's is — cart_set_qty()/checkout still re-check stock for non-preorder lines.
-if ($availableStock < 1 && $isPreorder) {
+if ($availableStock < 1 && ($isPreorder || $isBackorder)) {
     cart_add($productId, $qty, $variantId, null, $customId);
 } else {
     cart_add($productId, min($qty, $availableStock), $variantId, $availableStock, $customId);

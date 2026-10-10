@@ -59,7 +59,7 @@ try { $socials = store_socials(); $wa = $socials['whatsapp']['url'] ?? ''; } cat
 <?= function_exists('font_head_html') ? font_head_html() : '' ?>
 <style>
 :root { --bg:#f1f0ea; --card:#ffffff; --ink:#20293b; --ink-soft:#4a5670; --line:#dedbd0; --accent:<?= e($primary) ?>; --on-accent:<?= e($onPrimary) ?>; }
-@media (prefers-color-scheme: dark) { :root { --bg:#161b27; --card:#1f2636; --ink:#f2f3f7; --ink-soft:#aab2c5; --line:#303a52; } }
+@media (prefers-color-scheme: dark) { :root { --bg:#1b1b1c; --card:#252526; --ink:#ececea; --ink-soft:#b5b5b3; --line:#3a3a3c; } }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 body { margin: 0; min-height: 100vh; min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 24px; background: var(--bg); color: var(--ink); font-family: var(--font-body, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif); line-height: 1.55; }

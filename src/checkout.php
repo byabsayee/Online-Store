@@ -99,8 +99,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $label = $it['name'] . ($it['variant_label'] ? ' (' . $it['variant_label'] . ')' : '');
         if (!$it['available']) {
             $errors[] = $label . ' is no longer available — please remove it from your cart.';
-        } elseif ($it['quantity'] > $it['stock'] && !$it['is_preorder']) {
-            $errors[] = $label . ' only has ' . (int) $it['stock'] . ' left in stock.';
+        } elseif ($it['quantity'] > $it['stock'] && !$it['is_preorder'] && !$it['is_backorder']) {
+            $errors[] = $it['show_stock'] ? $label . ' only has ' . (int) $it['stock'] . ' left in stock.' : $label . ' does not have enough in stock — please lower the quantity.';
         }
     }
 
@@ -135,15 +135,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $orderId = (int) $pdo->lastInsertId();
 
             $itemStmt = $pdo->prepare(
-                'INSERT INTO order_items (order_id, product_id, variant_id, variant_label, product_name, price, quantity, subtotal, warranty_days, is_preorder) VALUES (?,?,?,?,?,?,?,?,?,?)'
+                'INSERT INTO order_items (order_id, product_id, variant_id, variant_label, product_name, price, quantity, subtotal, warranty_days, is_preorder, is_backorder) VALUES (?,?,?,?,?,?,?,?,?,?,?)'
             );
             $productStockStmt = $pdo->prepare('UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ?');
             $variantStockStmt = $pdo->prepare('UPDATE product_variants SET stock = stock - ? WHERE id = ? AND stock >= ?');
             foreach ($freshTotals['items'] as $it) {
-                $itemStmt->execute([$orderId, $it['product_id'], $it['variant_id'], $it['variant_label'] !== null ? mb_substr($it['variant_label'], 0, 150) : null, $it['name'], $it['price'], $it['quantity'], $it['price'] * $it['quantity'], $it['warranty_days'] ?? null, $it['is_preorder'] ? 1 : 0]);
+                $itemStmt->execute([$orderId, $it['product_id'], $it['variant_id'], $it['variant_label'] !== null ? mb_substr($it['variant_label'], 0, 150) : null, $it['name'], $it['price'], $it['quantity'], $it['price'] * $it['quantity'], $it['warranty_days'] ?? null, ($it['is_preorder'] || $it['is_backorder']) ? 1 : 0, $it['is_backorder'] ? 1 : 0]);
                 // Pre-order lines have no stock to deduct yet — skip straight past the
                 // conditional UPDATE below, which would otherwise always fail on stock >= ? here.
-                if ($it['is_preorder']) continue;
+                if ($it['is_preorder'] || $it['is_backorder']) continue;
                 // Conditional UPDATE: if someone else bought the last units a moment ago
                 // it matches no row, and we abort instead of overselling.
                 $stmtStock = $it['variant_id'] ? $variantStockStmt : $productStockStmt;

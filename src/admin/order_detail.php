@@ -196,7 +196,7 @@ require __DIR__ . '/includes/header.php';
     <thead><tr><th>Item</th><th>Price</th><th>Qty</th><th>Subtotal</th></tr></thead>
     <tbody>
       <?php foreach ($items as $it): ?>
-        <tr><td><?= e($it['product_name']) ?><?php if (!empty($it['is_preorder'])): ?> <span class="pill pill-brass" style="font-size:11px;">Pre-order</span><?php endif; ?><?php if (!empty($it['variant_label'])): ?><br><span style="color:var(--ink-faint);font-size:0.82rem;"><?= e($it['variant_label']) ?></span><?php endif; ?><?php if ($w = warranty_label($it['warranty_days'] ?? null)): ?><br><span style="color:var(--ink-faint);font-size:0.82rem;"><?= e($w) ?></span><?php endif; ?></td><td class="mono"><?= money($it['price']) ?></td><td><?= (int)$it['quantity'] ?></td><td class="mono"><?= money($it['subtotal']) ?></td></tr>
+        <tr><td><?= e($it['product_name']) ?><?php if (!empty($it['is_backorder'])): ?> <span class="pill pill-rust" style="font-size:11px;" title="Taken while out of stock — no stock was deducted">Backorder</span><?php elseif (!empty($it['is_preorder'])): ?> <span class="pill pill-brass" style="font-size:11px;">Pre-order</span><?php endif; ?><?php if (!empty($it['variant_label'])): ?><br><span style="color:var(--ink-faint);font-size:0.82rem;"><?= e($it['variant_label']) ?></span><?php endif; ?><?php if ($w = warranty_label($it['warranty_days'] ?? null)): ?><br><span style="color:var(--ink-faint);font-size:0.82rem;"><?= e($w) ?></span><?php endif; ?></td><td class="mono"><?= money($it['price']) ?></td><td><?= (int)$it['quantity'] ?></td><td class="mono"><?= money($it['subtotal']) ?></td></tr>
       <?php endforeach; ?>
     </tbody>
   </table>

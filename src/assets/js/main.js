@@ -235,7 +235,7 @@
       var t = btn.querySelector('[data-theme-label]');
       if (t) t.textContent = dark ? 'Dark mode on' : 'Dark mode';
     });
-    if (themeMeta) themeMeta.setAttribute('content', dark ? '#1a2030' : '#f8f6ee');
+    if (themeMeta) themeMeta.setAttribute('content', dark ? '#252526' : '#f8f6ee');
   }
   function setTheme(t, remember) {
     root.classList.add('theme-fade');

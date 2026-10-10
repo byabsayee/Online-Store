@@ -116,7 +116,7 @@ require __DIR__ . '/includes/header.php';
           </td>
           <td><?= e($p['category_name'] ?? '—') ?></td>
           <td class="mono"><?= e(money((float) $p['price'])) ?><?php if ($p['compare_price']): ?><div class="muted small" style="text-decoration:line-through;"><?= e(money((float) $p['compare_price'])) ?></div><?php endif; ?></td>
-          <td><?php if ($stockN <= 0 && $p['is_preorder']): ?><span class="pill pill-brass">Pre-order</span><?php elseif ($stockN <= 0): ?><span class="pill pill-rust">Out</span><?php elseif ($stockN <= 5): ?><span class="stock-low mono"><?= $stockN ?> left</span><?php else: ?><span class="mono"><?= $stockN ?></span><?php endif; ?></td>
+          <td><?php if ($stockN <= 0 && $p['is_preorder']): ?><span class="pill pill-brass">Pre-order</span><?php elseif ($stockN <= 0 && !empty($p['allow_backorder'])): ?><span class="pill pill-rust" title="Out of stock, but shoppers can still order it">0 · Backorder</span><?php elseif ($stockN <= 0): ?><span class="pill pill-rust">Out</span><?php elseif ($stockN <= 5): ?><span class="stock-low mono"><?= $stockN ?> left</span><?php else: ?><span class="mono"><?= $stockN ?></span><?php endif; ?></td>
           <td class="mono"><?= (int) $p['wish_count'] > 0 ? ui_icon('heart', 13) . ' ' . (int) $p['wish_count'] : '<span class="muted">0</span>' ?></td>
           <td class="small" style="white-space:nowrap;"><?php if ((int) $p['review_count'] > 0): ?><?= stars_html((float) $p['review_avg']) ?> <span class="muted">(<?= (int) $p['review_count'] ?>)</span><?php else: ?><span class="muted">—</span><?php endif; ?></td>
           <td><?= $p['is_active'] ? '<span class="pill pill-sage">Visible</span>' : '<span class="pill pill-ink">Hidden</span>' ?></td>

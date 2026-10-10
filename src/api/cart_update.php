@@ -22,7 +22,7 @@ if ($itemId <= 0) {
 // except pre-order lines, which have no real stock to cap against yet.
 foreach (cart_items() as $it) {
     if ((int) $it['id'] === $itemId) {
-        if (!$it['is_preorder']) $qty = min($qty, max(1, (int) $it['stock']));
+        if (!$it['is_preorder'] && !$it['is_backorder']) $qty = min($qty, max(1, (int) $it['stock']));
         break;
     }
 }

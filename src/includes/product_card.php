@@ -7,6 +7,8 @@ $__onSale = !empty($p['compare_price']) && $p['compare_price'] > $p['price'];
 $__hasVariants = (int) ($p['variant_count'] ?? 0) > 0;
 $__stock = $__hasVariants ? (int) ($p['variant_stock'] ?? 0) : (int) $p['stock'];
 $__preorder = $__stock <= 0 && !empty($p['is_preorder']);
+// "Take orders even when stock is 0": looks and behaves like an in-stock product.
+$__backorder = $__stock <= 0 && !$__preorder && !empty($p['allow_backorder']);
 ?>
 <div class="card-product">
   <div class="thumb">
@@ -18,7 +20,7 @@ $__preorder = $__stock <= 0 && !empty($p['is_preorder']);
       <svg viewBox="0 0 24 24" width="17" height="17" fill="<?= $__isFav ? 'currentColor' : 'none' ?>" stroke="currentColor" stroke-width="2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>
     </button>
     <?php if ($__onSale): ?><span class="sale-flag">Sale</span><?php endif; ?>
-    <?php if ($__preorder): ?><span class="out-flag" style="background:var(--brass, #a8823c);">Pre-order</span><?php elseif ($__stock <= 0): ?><span class="out-flag">Out of stock</span><?php endif; ?>
+    <?php if ($__preorder): ?><span class="out-flag" style="background:var(--brass, #a8823c);">Pre-order</span><?php elseif ($__stock <= 0 && !$__backorder): ?><span class="out-flag">Out of stock</span><?php endif; ?>
     <?php if (!empty($p['youtube_url'])): ?>
       <span class="video-flag" title="Video available"><svg viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg></span>
     <?php endif; ?>
@@ -37,11 +39,11 @@ $__preorder = $__stock <= 0 && !empty($p['is_preorder']);
     </div>
     <?php endif; ?>
   </div>
-  <?php if (($__stock > 0 || $__preorder) && $__hasVariants): ?>
+  <?php if (($__stock > 0 || $__preorder || $__backorder) && $__hasVariants): ?>
   <div class="add-form">
     <a href="<?= e(product_url($p)) ?>" class="btn btn-primary btn-block btn-sm"><?= $__preorder ? 'Pre-order' : 'Choose options' ?></a>
   </div>
-  <?php elseif ($__stock > 0 || $__preorder): ?>
+  <?php elseif ($__stock > 0 || $__preorder || $__backorder): ?>
   <form class="add-form js-add-cart" method="post">
     <input type="hidden" name="product_id" value="<?= (int)$p['id'] ?>">
     <input type="hidden" name="quantity" value="1">

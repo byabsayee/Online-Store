@@ -365,7 +365,7 @@ function cart_items(): array {
                    COALESCE(cz.image, co.image, so.image, p.image_main) AS image_main,
                    co.price_delta AS color_delta, so.price_delta AS size_delta,
                    cz.name AS custom_name, cz.price_delta AS custom_delta, cz.is_active AS custom_active,
-                   p.stock AS product_stock, p.is_active AS product_active, p.is_preorder, p.preorder_note, p.preorder_available_date,
+                   p.stock AS product_stock, p.show_stock, p.allow_backorder, p.is_active AS product_active, p.is_preorder, p.preorder_note, p.preorder_available_date,
                    COALESCE(so.weight_grams, p.weight_grams) AS weight_grams,
                    v.color AS variant_color, v.size AS variant_size, v.price_delta, v.stock AS variant_stock,
                    v.is_active AS variant_active
@@ -393,6 +393,9 @@ function cart_items(): array {
         // Pre-order is a product-level promise (not tracked per variant), so a variant line still
         // counts as a pre-order once its own stock is out, as long as the product allows it.
         $r['is_preorder'] = (bool) $r['is_preorder'] && $r['stock'] <= 0;
+        // "Take orders even when stock is 0": an out-of-stock line of such a product can still be ordered (no stock is deducted).
+        $r['is_backorder'] = !$r['is_preorder'] && !empty($r['allow_backorder']) && $r['stock'] <= 0;
+        $r['show_stock'] = !empty($r['show_stock']);
         $label = $r['variant_id'] ? variant_label(['color' => $r['variant_color'], 'size' => $r['variant_size']]) : '';
         if (!empty($r['custom_name'])) $label = ($label !== '' ? $label . ' · ' : '') . 'Custom: ' . $r['custom_name'];
         $r['variant_label'] = $label !== '' ? $label : null;
@@ -717,7 +720,7 @@ function setting_or(string $key, $fallback) {
 
 const THEME_DEFAULTS = ['primary' => '#a97c34', 'secondary' => '#5f7d5b', 'dark' => '#20293b'];
 const THEME_PAPER_LIGHT = '#efece2';
-const THEME_PAPER_DARK = '#12161f';
+const THEME_PAPER_DARK = '#1b1b1c';
 
 /** Theme + seasonal-effect settings, with sane defaults if unset. */
 function theme_settings(): array {
@@ -785,7 +788,9 @@ function theme_css(): string {
         . "--brass:$p;--brass-dark:" . hex_shade($p, -18) . ";--brass-tint:" . hex_shade($p, 55) . ";--on-brass:" . contrast_text($p) . ";"
         . "--accent-text:" . $light($p) . ";--sage:$s;--sage-text:" . $light($s) . ";"
         . "--surface-dark:$d;--on-dark:" . contrast_text($d) . ";}"
-        . ":root[data-theme=\"dark\"]{--accent-text:" . $dark($p) . ";--sage-text:" . $dark($s) . ";}";
+        . ":root[data-theme=\"dark\"]{--accent-text:" . $dark($p) . ";--sage-text:" . $dark($s) . ";"
+        // The stock navy header/footer would look bluish on the neutral night palette; only a custom admin-chosen colour is kept.
+        . ($d === THEME_DEFAULTS['dark'] ? "--surface-dark:#101011;--on-dark:#ffffff;" : "") . "}";
 }
 
 /** Announcement bar shown above the header: [enabled, text, link]. */
@@ -943,6 +948,7 @@ function order_stock_adjust(PDO $pdo, int $orderId, int $direction, string $orig
         $table = $it['variant_id'] ? 'product_variants' : 'products';
         $rowId = $it['variant_id'] ?: $it['product_id'];
         if (!$rowId || !$it['product_id']) continue; // product was deleted since — nothing to adjust
+        if (!empty($it['is_preorder'])) continue;     // pre-order / backorder lines never took stock off the shelf
         $ret->execute([$it['id']]);
         $qty = (int) $it['quantity'] - (int) $ret->fetchColumn();
         if ($qty < 1) continue;

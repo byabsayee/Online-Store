@@ -50,6 +50,12 @@ $totalVariantStock = 0;
 foreach ($variants as $v) { $totalVariantStock += (int) $v['stock']; }
 $effectiveStock = $variants ? $totalVariantStock : (int) $product['stock'];
 $isPreorder = $effectiveStock <= 0 && !empty($product['is_preorder']);
+// "Take orders even when stock is 0": ordering stays open, with the normal Add to cart button (a pre-order label wins if both are on).
+$isBackorder = $effectiveStock <= 0 && !$isPreorder && !empty($product['allow_backorder']);
+$canOrder = $effectiveStock > 0 || $isPreorder || $isBackorder;
+// "Show stock" off: shoppers never see (or can read from the page) how many units are left.
+$showStock = !empty($product['show_stock']);
+$pubStock = fn (int $n) => $showStock ? $n : ($n > 0 ? 1 : 0);
 $tags = product_tags($product);
 
 // Everything the page's picker script needs, in one JSON blob.
@@ -61,7 +67,7 @@ $pickerData = [
         'h' => $product['height_mm'] !== null ? (int) $product['height_mm'] : null,
         'w' => $product['width_mm'] !== null ? (int) $product['width_mm'] : null,
         'd' => $product['depth_mm'] !== null ? (int) $product['depth_mm'] : null,
-        'stock' => (int) $product['stock'],
+        'stock' => $pubStock((int) $product['stock']),
         'image' => product_image_src($gallery[0]),
     ],
     'colors' => array_map(fn ($o) => ['name' => $o['name'], 'image' => $o['image'] ?: null, 'delta' => (float) ($o['price_delta'] ?? 0)], $colorOpts),
@@ -75,8 +81,10 @@ $pickerData = [
     ], $sizeOpts),
     'variants' => array_map(fn ($v) => [
         'id' => (int) $v['id'], 'color' => $v['color'] ?: null, 'size' => $v['size'] ?: null,
-        'delta' => (float) $v['price_delta'], 'stock' => (int) $v['stock'],
+        'delta' => (float) $v['price_delta'], 'stock' => $pubStock((int) $v['stock']),
     ], $variants),
+    'hideStock' => !$showStock,
+    'backorder' => !empty($product['allow_backorder']),
     'preorder' => $isPreorder,
     'preorderNote' => $product['preorder_note'] ?: null,
 ];
@@ -107,13 +115,13 @@ $seo = [
     'image' => $gallery[0] ?? null,
     'images' => array_values(array_filter($gallery)),
     'price' => $seoPrice,
-    'in_stock' => $effectiveStock > 0,
+    'in_stock' => $canOrder,
     'sku' => $product['sku'],
     'category' => $product['category_name'],
     'rating' => $reviewSummary['count'] ? $reviewSummary['avg'] : null,
     'review_count' => $reviewSummary['count'],
 ];
-$bodyClass = ($effectiveStock > 0 || $isPreorder) ? 'has-action-bar' : '';
+$bodyClass = $canOrder ? 'has-action-bar' : '';
 require __DIR__ . '/includes/header.php';
 ?>
 
@@ -166,11 +174,15 @@ require __DIR__ . '/includes/header.php';
     <div class="stock-line" id="stockLine">
       <?php if ($effectiveStock > 10): ?>
         <span class="pill pill-sage">In stock</span>
+      <?php elseif ($effectiveStock > 0 && !$showStock): ?>
+        <span class="pill pill-sage">In stock</span>
       <?php elseif ($effectiveStock > 0): ?>
         <span class="pill pill-rust">Only <?= (int)$effectiveStock ?> left</span>
       <?php elseif ($isPreorder): ?>
         <span class="pill pill-brass">Pre-order<?= $product['preorder_note'] ? ' — ' . e($product['preorder_note']) : '' ?></span>
         <?php if ($product['preorder_available_date']): ?><span class="muted small">Expected <?= e(date('j M Y', strtotime($product['preorder_available_date']))) ?></span><?php endif; ?>
+      <?php elseif ($isBackorder): ?>
+        <span class="pill pill-sage">Available to order</span>
       <?php else: ?>
         <span class="pill pill-ink">Out of stock</span>
       <?php endif; ?>
@@ -222,7 +234,7 @@ require __DIR__ . '/includes/header.php';
       </div>
     <?php endif; ?>
 
-    <?php if ($effectiveStock > 0 || $isPreorder): ?>
+    <?php if ($canOrder): ?>
       <form class="js-add-cart" method="post" id="addCartForm">
         <input type="hidden" name="product_id" value="<?= (int)$product['id'] ?>">
         <?php if ($variants): ?><input type="hidden" name="variant_id" id="variantIdField" value=""><?php endif; ?>
@@ -230,7 +242,7 @@ require __DIR__ . '/includes/header.php';
         <div class="qty-row">
           <div class="qty-stepper">
             <button type="button" class="minus" aria-label="Decrease">−</button>
-            <input type="number" name="quantity" id="qtyField" value="1" min="1" max="<?= $effectiveStock > 0 ? (int)$effectiveStock : 99 ?>">
+            <input type="number" name="quantity" id="qtyField" value="1" min="1" max="<?= ($effectiveStock > 0 && $showStock) ? (int)$effectiveStock : 99 ?>">
             <button type="button" class="plus" aria-label="Increase">+</button>
           </div>
         </div>
@@ -282,7 +294,7 @@ require __DIR__ . '/includes/header.php';
   </div>
 </div>
 
-<?php if ($effectiveStock > 0 || $isPreorder): ?>
+<?php if ($canOrder): ?>
 <div class="buy-bar" id="buyBar" aria-label="Add to cart">
   <div class="bb-price"><small>Price</small><strong id="buyBarPrice"><?= money($product['price']) ?></strong></div>
   <button type="button" class="btn btn-primary" id="buyBarBtn"><?= (!$variants && $isPreorder) ? 'Pre-order' : 'Add to cart' ?></button>
